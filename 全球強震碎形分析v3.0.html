@@ -1,0 +1,755 @@
+
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>全球地震碎形分析戰情室 v3.0 (Z-Score Edition)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Roboto+Mono:wght@400;500;700&display=swap');
+
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #020617; 
+            font-family: "Noto Sans TC", sans-serif; 
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .font-mono { font-family: "Roboto Mono", monospace; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 玻璃擬態面板 */
+        .glass-panel {
+            background-color: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        /* 區域卡片樣式 */
+        .zone-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(71, 85, 105, 0.4);
+            transition: all 0.3s ease; 
+            cursor: default; 
+            position: relative;
+            touch-action: pan-y;
+        }
+        .zone-card:hover {
+            background: rgba(51, 65, 85, 0.8);
+            border-color: rgba(96, 165, 250, 0.5);
+        }
+        .zone-card.active {
+            border-color: #3b82f6;
+            background: rgba(30, 58, 138, 0.5);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+        /* 異常狀態樣式 */
+        .zone-card.alert-mode {
+            border-color: #ef4444;
+            background: rgba(69, 10, 10, 0.6);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+        }
+
+        /* SortableJS */
+        .sortable-ghost { opacity: 0.2; background: #3b82f6; }
+        .sortable-drag { cursor: grabbing; opacity: 1 !important; background: rgba(30, 58, 138, 0.95); box-shadow: 0 10px 25px rgba(0,0,0,0.5); transform: scale(1.02); }
+
+        .drag-handle { cursor: grab; padding: 8px 8px 8px 0; color: #64748b; transition: color 0.2s; touch-action: none; }
+        .drag-handle:hover { color: #cbd5e1; }
+        .drag-handle:active { cursor: grabbing; color: #38bdf8; }
+
+        .close-btn { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 16px; background: rgba(0,0,0,0.2); border: 1px solid transparent; transition: all 0.2s; z-index: 10; cursor: pointer; }
+        .close-btn:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; border-color: #ef4444; }
+
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+
+        #left-panel {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in-out;
+            max-height: 90dvh;
+        }
+        
+        .panel-hidden {
+            transform: translateX(-120%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Z-Score Badge Styles */
+        .z-badge {
+            font-size: 9px;
+            padding: 1px 3px;
+            border-radius: 3px;
+            font-family: "Roboto Mono", monospace;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+        }
+        .z-normal { color: #94a3b8; background: rgba(148, 163, 184, 0.1); }
+        .z-warn-low { color: #facc15; background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.3); font-weight: bold; } /* 下降異常 */
+        .z-warn-high { color: #f472b6; background: rgba(244, 114, 182, 0.2); border: 1px solid rgba(244, 114, 182, 0.3); font-weight: bold; } /* 上升異常 */
+        .z-na { color: #475569; border: 1px dashed #475569; }
+        
+        /* 調整 Grid 以容納 4 欄 (參數, 背景, 7d, 14d) */
+        .param-row { 
+            display: grid; 
+            grid-template-columns: 1.4fr 0.8fr 1.1fr 1.1fr; 
+            gap: 4px; 
+            align-items: center; 
+            font-size: 11px; 
+            padding: 3px 0; 
+            border-bottom: 1px solid rgba(148,163,184,0.1); 
+        }
+        .param-row:last-child { border-bottom: none; }
+        
+        .col-head { font-size: 9px; color: #64748b; font-family: "Roboto Mono"; text-transform: uppercase; }
+    </style>
+
+    <script src="https://unpkg.com/d3@7"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/globe.gl@2.26.4/dist/globe.gl.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+
+    <!-- Loading -->
+    <div id="loader" class="fixed inset-0 bg-[#020617] z-[9999] flex flex-col items-center justify-center text-white transition-opacity duration-500">
+        <div class="w-16 h-16 border-4 border-slate-700 border-t-pink-500 rounded-full animate-spin mb-4"></div>
+        <div class="text-xl font-bold tracking-[0.2em] text-pink-400 mb-2">SEISMIC FRACTAL V3.0</div>
+        <div id="loader-status" class="text-sm text-slate-400 font-mono">系統初始化中...</div>
+        <div id="calc-progress" class="text-xs text-slate-500 font-mono mt-2 w-64 text-center"></div>
+    </div>
+
+    <div id="globeViz"></div>
+
+    <!-- 喚回按鈕 -->
+    <button id="btn-show-panel" onclick="togglePanel(true)" class="hidden absolute top-4 left-4 z-20 glass-panel p-2 rounded-lg text-cyan-400 hover:text-white hover:bg-slate-700 transition flex items-center gap-2 border border-cyan-500/30 group">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        <span class="text-xs font-bold font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-300 w-0 group-hover:w-auto overflow-hidden whitespace-nowrap">戰情室</span>
+    </button>
+
+    <!-- 左側面板：戰情室 -->
+    <div id="left-panel" class="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-[95vw] md:w-[420px] flex flex-col gap-2 pointer-events-none">
+        
+        <!-- Header -->
+        <div class="glass-panel p-3 md:p-4 rounded-xl pointer-events-auto shrink-0 border-t-4 border-t-pink-500 shadow-xl">
+            <div class="flex justify-between items-center mb-1">
+                <h1 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2"><path d="M2 12h2l3 9 4-18 4 18 3-9h2"/></svg>
+                    碎形戰情室 v3.0 <span class="text-xs bg-pink-500/20 text-pink-300 px-1 rounded ml-1">7d/14d Z-Score</span>
+                </h1>
+                
+                <div class="flex gap-2">
+                    <button id="btn-rotate" onclick="toggleRotation()" class="text-slate-400 hover:text-white hover:bg-slate-700 p-1.5 rounded transition border border-transparent hover:border-slate-600">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    </button>
+
+                    <button onclick="resetLayout()" class="text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1.5 rounded transition flex items-center gap-1 border border-slate-600">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                        重置
+                    </button>
+                    <button onclick="togglePanel(false)" class="text-slate-400 hover:text-white hover:bg-slate-700 p-1.5 rounded transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-end mt-1">
+                <p class="text-[10px] text-slate-400 font-mono">Monitor: 7d & 14d Z-Score vs 90d Baseline</p>
+                <div id="global-status" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                    CONNECTING...
+                </div>
+            </div>
+        </div>
+
+        <!-- 區域列表 -->
+        <div id="zone-list" class="glass-panel rounded-xl flex-1 overflow-y-auto custom-scroll pointer-events-auto p-2 space-y-2 min-h-0 shadow-xl"></div>
+
+        <!-- 底部圖例 -->
+        <div class="glass-panel p-3 rounded-xl pointer-events-auto shrink-0 text-[10px] text-slate-400 grid grid-cols-2 gap-2 shadow-xl mb-4 md:mb-0">
+            <div><span class="text-cyan-400 font-bold">b-value:</span> Z < -1.5 警示</div>
+            <div><span class="text-yellow-400 font-bold">Dt (Time):</span> Z < -1.5 警示</div>
+            <div><span class="text-fuchsia-400 font-bold">Δα (MF):</span> Z > +1.5 警示</div>
+            <div><span class="text-slate-500">Z-Score:</span> (現值-背景)/標準差</div>
+        </div>
+    </div>
+
+    <!-- 右上角：GPS 時鐘 -->
+    <div class="absolute top-4 right-4 z-20 pointer-events-none hidden md:block">
+        <div class="glass-panel px-4 py-2 rounded-lg flex flex-col items-end border border-slate-700/50">
+            <div class="text-[10px] text-slate-400 font-bold tracking-widest mb-0.5">TAIPEI GPS TIME</div>
+            <div id="gps-time" class="text-2xl font-mono font-bold text-cyan-300 tabular-nums leading-none drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]">00:00:00</div>
+            <div id="gps-date" class="text-xs text-slate-500 font-mono mt-1">YYYY-MM-DD</div>
+        </div>
+    </div>
+
+    <!-- 右上 HUD -->
+    <div id="quake-hud" class="hidden absolute top-24 right-4 z-20 w-64 glass-panel p-4 rounded-xl border-l-4 border-red-500 pointer-events-none animate-fade-in transition-opacity">
+        <div class="flex justify-between items-start mb-2">
+            <span class="text-[10px] font-mono text-red-400">EVENT DETECTED</span>
+            <span id="hud-mag" class="text-2xl font-bold text-white"></span>
+        </div>
+        <h2 id="hud-place" class="text-sm font-bold text-slate-200 leading-tight mb-2 line-clamp-2"></h2>
+        <div class="grid grid-cols-2 gap-y-1 text-[10px] text-slate-400 font-mono">
+            <span>DEPTH:</span> <span id="hud-depth" class="text-slate-200"></span>
+            <span>TIME:</span> <span id="hud-time" class="text-slate-200"></span>
+        </div>
+    </div>
+
+    <script>
+        // --- 設定與狀態 ---
+        let world;
+        let allQuakes = [];
+        let sortableInstance;
+        let hiddenZones = new Set();
+        let isRotating = true;
+
+        const colors = {
+            mag: d3.scaleLinear().domain([4, 6, 8]).range(['#ffd700', '#ff8c00', '#ff0000']).clamp(true)
+        };
+
+        const ZONES = [
+            { id: 'global', name: '🌍 全球總覽 (Global)', filter: () => true, center: { lat: 20, lng: 0, alt: 2.5 } },
+            { id: 'tw_special', name: '🇹🇼 琉球/台灣/菲律賓海溝', filter: q => q.lat > 10 && q.lat < 30 && q.lng > 118 && q.lng < 132, center: { lat: 23.5, lng: 121, alt: 0.6 } },
+            { id: 'jp', name: '🇯🇵 日本/千島海溝', filter: q => q.lat > 25 && q.lat < 55 && q.lng > 120 && q.lng < 160, center: { lat: 38, lng: 140, alt: 0.8 } },
+            { id: 'sea', name: '🇮🇩 東南亞/印尼', filter: q => q.lat > -15 && q.lat < 25 && q.lng > 90 && q.lng < 145, center: { lat: 0, lng: 115, alt: 1.0 } },
+            { id: 'sa', name: '🇨🇱 南美洲 (安地斯)', filter: q => q.lat > -60 && q.lat < 15 && q.lng > -85 && q.lng < -60, center: { lat: -20, lng: -70, alt: 1.2 } },
+            { id: 'na', name: '🇺🇸 北美西岸/阿留申', filter: q => q.lat > 30 && q.lat < 65 && q.lng > -170 && q.lng < -110, center: { lat: 45, lng: -130, alt: 1.0 } },
+            { id: 'eu', name: '🇹🇷 地中海/喜馬拉雅', filter: q => q.lat > 25 && q.lat < 50 && q.lng > 20 && q.lng < 100, center: { lat: 35, lng: 60, alt: 1.2 } }
+        ];
+
+        // --- 0. 控制功能 ---
+        function toggleRotation() {
+            isRotating = !isRotating;
+            if (world) world.controls().autoRotate = isRotating;
+            const btn = document.getElementById('btn-rotate');
+            btn.innerHTML = isRotating ? 
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>' : 
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+            btn.classList.toggle('text-yellow-400', !isRotating);
+        }
+
+        function togglePanel(show) {
+            const panel = document.getElementById('left-panel');
+            const showBtn = document.getElementById('btn-show-panel');
+            if (show) {
+                panel.classList.remove('panel-hidden');
+                showBtn.classList.add('hidden');
+            } else {
+                panel.classList.add('panel-hidden');
+                showBtn.classList.remove('hidden');
+            }
+        }
+
+        // --- 1. 碎形數學核心 (v3.0) ---
+        const FractalMath = {
+            calcB: (quakes) => {
+                if (quakes.length < 10) return NaN;
+                const mags = quakes.map(q => q.mag).filter(m => m >= 4.0);
+                if (mags.length < 5) return NaN;
+                const avg = mags.reduce((a,b)=>a+b,0) / mags.length;
+                return Math.log10(Math.E) / (avg - 4.0 + 0.05);
+            },
+            
+            calcD0: (quakes) => {
+                if (quakes.length < 15) return NaN;
+                const coords = quakes.map(q => ({ x: (q.lng+180)/360, y: (q.lat+90)/180 }));
+                const scales = [50, 25, 12, 6, 3]; 
+                const counts = scales.map(s => {
+                    const set = new Set();
+                    coords.forEach(p => set.add(`${Math.floor(p.x*s)},${Math.floor(p.y*s)}`));
+                    return { r: 1/s, N: set.size };
+                });
+                return FractalMath.regress(counts.map(d => Math.log10(1/d.r)), counts.map(d => Math.log10(d.N)));
+            },
+
+            calcDt: (quakes) => {
+                if (quakes.length < 15) return NaN;
+                const times = quakes.map(q => q.time.getTime() / 3600000).sort((a,b)=>a-b);
+                const n = Math.min(times.length, 200); // Optimization for speed in loop
+                const sampleTimes = times.slice(-n);
+                const maxTau = (sampleTimes[n-1] - sampleTimes[0]) / 5;
+                if(maxTau <= 0) return NaN;
+                
+                const logC = [], logTau = [];
+                for(let k=1; k<=8; k++) {
+                    const tau = maxTau * (Math.pow(1.5, k) / 25);
+                    let count = 0;
+                    for(let i=0; i<n; i++) {
+                        for(let j=i+1; j<n; j++) {
+                            if (sampleTimes[j] - sampleTimes[i] < tau) count++;
+                            else break;
+                        }
+                    }
+                    if(count > 0) {
+                        logTau.push(Math.log10(tau));
+                        logC.push(Math.log10(count / (n*(n-1)/2)));
+                    }
+                }
+                return FractalMath.regress(logTau, logC);
+            },
+
+            calcH: (quakes) => {
+                if (quakes.length < 15) return NaN;
+                const times = quakes.map(q => q.time.getTime()).sort((a,b)=>a-b);
+                const intervals = [];
+                for(let i=1; i<times.length; i++) intervals.push(times[i] - times[i-1]);
+                if (intervals.length < 5) return NaN;
+                const mean = intervals.reduce((a,b)=>a+b,0)/intervals.length;
+                const dev = intervals.map(x => x - mean);
+                const cumDev = [];
+                let sum = 0;
+                dev.forEach(d => { sum += d; cumDev.push(sum); });
+                const R = Math.max(...cumDev) - Math.min(...cumDev);
+                const S = Math.sqrt(dev.reduce((a,b)=>a+b*b,0)/dev.length);
+                if (S === 0 || R === 0) return 0.5;
+                const H = Math.log10(R/S) / Math.log10(intervals.length);
+                return Math.max(0, Math.min(1, H));
+            },
+
+            calcMFDFA: (quakes) => {
+                const N = quakes.length;
+                if (N < 20) return NaN; 
+
+                const times = quakes.map(q => q.time.getTime()).sort((a,b)=>a-b);
+                const intervals = [];
+                for(let i=1; i<N; i++) intervals.push(times[i] - times[i-1]);
+                
+                const mean = intervals.reduce((a,b)=>a+b,0) / intervals.length;
+                const Y = [0];
+                let sum = 0;
+                for(let i=0; i<intervals.length; i++) {
+                    sum += (intervals[i] - mean);
+                    Y.push(sum);
+                }
+
+                const scales = [4, 8, 16, 32]; 
+                const q_vals = [-2, 0, 2];
+                const F_q_s = {};
+
+                scales.forEach(s => {
+                    if (s > intervals.length / 4) return;
+                    const segments = Math.floor(intervals.length / s);
+                    const fluctuations = [];
+                    for (let v = 0; v < segments; v++) {
+                        const start = v * s;
+                        const segmentY = Y.slice(start, start + s);
+                        const segmentX = Array.from({length: s}, (_, i) => i);
+                        const sx = segmentX.reduce((a,b)=>a+b,0);
+                        const sy = segmentY.reduce((a,b)=>a+b,0);
+                        const sxy = segmentX.reduce((a,b,i)=>a+b*segmentY[i],0);
+                        const sxx = segmentX.reduce((a,b)=>a+b*b,0);
+                        const slope = (n=s, n*sxy - sx*sy) / (n*sxx - sx*sx);
+                        const intercept = (sy - slope*sx) / s;
+                        let sqErr = 0;
+                        for(let i=0; i<s; i++) sqErr += Math.pow(segmentY[i] - (slope * i + intercept), 2);
+                        fluctuations.push(sqErr / s);
+                    }
+                    q_vals.forEach(q => {
+                        let fq = 0;
+                        if (q === 0) {
+                            const sumLog = fluctuations.reduce((a, val) => a + Math.log(Math.sqrt(val)), 0);
+                            fq = Math.exp(sumLog / segments);
+                        } else {
+                            const sumPow = fluctuations.reduce((a, val) => a + Math.pow(val, q/2), 0);
+                            fq = Math.pow(sumPow / segments, 1/q);
+                        }
+                        if (!F_q_s[q]) F_q_s[q] = { logS: [], logF: [] };
+                        F_q_s[q].logS.push(Math.log10(s));
+                        F_q_s[q].logF.push(Math.log10(fq));
+                    });
+                });
+
+                const tau = [];
+                const qs = [];
+                if (!F_q_s[2] || F_q_s[2].logS.length < 2) return NaN;
+
+                q_vals.forEach(q => {
+                    const h_q = FractalMath.regress(F_q_s[q].logS, F_q_s[q].logF);
+                    tau.push(q * h_q - 1);
+                    qs.push(q);
+                });
+
+                const alphas = [];
+                for(let i=0; i<qs.length-1; i++) {
+                    alphas.push((tau[i+1] - tau[i]) / (qs[i+1] - qs[i]));
+                }
+                if (alphas.length === 0) return NaN;
+                const width = Math.max(...alphas) - Math.min(...alphas);
+                return width < 0 ? 0 : width; 
+            },
+
+            regress: (x, y) => {
+                const n = x.length;
+                if(n < 2) return 0;
+                const sx = x.reduce((a,b)=>a+b,0);
+                const sy = y.reduce((a,b)=>a+b,0);
+                const sxy = x.reduce((a,b,i)=>a+b*y[i],0);
+                const sxx = x.reduce((a,b)=>a+b*b,0);
+                if ((n*sxx - sx*sx) === 0) return 0;
+                return (n*sxy - sx*sy) / (n*sxx - sx*sx);
+            }
+        };
+
+        // --- 2. Z-Score 統計引擎 (v3.0 Updated) ---
+        const StatsEngine = {
+            // 將90天數據切片，計算背景分佈
+            calculateDistribution: async (allZoneQuakes, windowDays, stepDays = 3) => {
+                const now = new Date();
+                const samples = { b:[], d0:[], dt:[], h:[], da:[] };
+                
+                // Sliding window sampling
+                for (let i = windowDays * 2; i < 90; i += stepDays) {
+                    const end = new Date(now);
+                    end.setDate(now.getDate() - i);
+                    const start = new Date(end);
+                    start.setDate(end.getDate() - windowDays);
+                    
+                    const slice = allZoneQuakes.filter(q => q.time >= start && q.time < end);
+                    if (slice.length < 15) continue; // 樣本不足略過
+
+                    const b = FractalMath.calcB(slice);
+                    const d0 = FractalMath.calcD0(slice);
+                    const dt = FractalMath.calcDt(slice);
+                    const h = FractalMath.calcH(slice);
+                    const da = FractalMath.calcMFDFA(slice);
+
+                    if(!isNaN(b)) samples.b.push(b);
+                    if(!isNaN(d0)) samples.d0.push(d0);
+                    if(!isNaN(dt)) samples.dt.push(dt);
+                    if(!isNaN(h)) samples.h.push(h);
+                    if(!isNaN(da)) samples.da.push(da);
+                }
+
+                // Helper to get mean/std
+                const getStats = (arr) => {
+                    if (arr.length < 3) return null;
+                    const mean = arr.reduce((a,b)=>a+b,0) / arr.length;
+                    const variance = arr.reduce((a,b)=>a + Math.pow(b-mean, 2), 0) / arr.length;
+                    return { mean, std: Math.sqrt(variance) };
+                };
+
+                return {
+                    b: getStats(samples.b),
+                    d0: getStats(samples.d0),
+                    dt: getStats(samples.dt),
+                    h: getStats(samples.h),
+                    da: getStats(samples.da)
+                };
+            },
+
+            // 取得目前的 Z-Score
+            getZScore: (currentVal, stats) => {
+                if (!stats || stats.std === 0 || isNaN(currentVal)) return null;
+                return (currentVal - stats.mean) / stats.std;
+            }
+        };
+
+        // --- 3. 介面與資料流 ---
+
+        async function fetchData() {
+            const status = document.getElementById('loader-status');
+            const progress = document.getElementById('calc-progress');
+            const globalStatus = document.getElementById('global-status');
+            
+            const now = new Date();
+            const past = new Date();
+            past.setDate(now.getDate() - 90);
+
+            try {
+                status.innerText = "下載 USGS 地震目錄 (90天)...";
+                const res = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${past.toISOString()}&minmagnitude=4.0&orderby=time`);
+                const data = await res.json();
+                
+                allQuakes = data.features.map(f => ({
+                    lat: f.geometry.coordinates[1],
+                    lng: f.geometry.coordinates[0],
+                    depth: f.geometry.coordinates[2],
+                    mag: f.properties.mag,
+                    place: f.properties.place,
+                    time: new Date(f.properties.time)
+                }));
+
+                globalStatus.innerText = `ONLINE (${allQuakes.length} events)`;
+                globalStatus.classList.replace('text-slate-300', 'text-green-400');
+                world.pointsData(allQuakes);
+
+                // --- 複雜運算分批執行 ---
+                status.innerText = "建立 90 天背景分佈模型...";
+                document.getElementById('zone-list').innerHTML = '';
+                
+                // 逐區分析 (Sequential to avoid UI freeze)
+                for (let i = 0; i < ZONES.length; i++) {
+                    const zone = ZONES[i];
+                    progress.innerText = `分析區域 ${i+1}/${ZONES.length}: ${zone.name}`;
+                    
+                    // 讓 UI 有機會渲染 loading 文字
+                    await new Promise(r => setTimeout(r, 50)); 
+                    
+                    const zoneQuakes = allQuakes.filter(zone.filter);
+                    await processZone(zone, zoneQuakes);
+                }
+
+                setTimeout(() => {
+                    document.getElementById('loader').style.opacity = 0;
+                    setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+                    focusZone('tw_special');
+                }, 500);
+
+            } catch (e) {
+                console.error(e);
+                status.innerText = "系統錯誤: " + e.message;
+                globalStatus.innerText = "OFFLINE";
+                globalStatus.classList.add('text-red-400');
+            }
+        }
+
+        async function processZone(zone, quakes) {
+            const container = document.getElementById('zone-list');
+            
+            // 1. 計算全 90 天平均 (Baseline Reference)
+            const b90 = FractalMath.calcB(quakes) || 0;
+            const dt90 = FractalMath.calcDt(quakes) || 0;
+            const da90 = FractalMath.calcMFDFA(quakes) || 0;
+            const d090 = FractalMath.calcD0(quakes) || 0;
+            const h90 = FractalMath.calcH(quakes) || 0;
+
+            // 2. 建立背景統計模型 (7天 & 14天)
+            const stats7 = await StatsEngine.calculateDistribution(quakes, 7, 3);
+            const stats14 = await StatsEngine.calculateDistribution(quakes, 14, 3);
+            
+            // 3. 計算最近 7 天 & 14 天數值
+            const now = new Date();
+            const past7 = new Date(); past7.setDate(now.getDate() - 7);
+            const past14 = new Date(); past14.setDate(now.getDate() - 14);
+
+            const quakes7 = quakes.filter(q => q.time >= past7);
+            const quakes14 = quakes.filter(q => q.time >= past14);
+            
+            const p7 = {
+                b: FractalMath.calcB(quakes7),
+                dt: FractalMath.calcDt(quakes7),
+                da: FractalMath.calcMFDFA(quakes7),
+                d0: FractalMath.calcD0(quakes7),
+                h: FractalMath.calcH(quakes7)
+            };
+
+            const p14 = {
+                b: FractalMath.calcB(quakes14),
+                dt: FractalMath.calcDt(quakes14),
+                da: FractalMath.calcMFDFA(quakes14),
+                d0: FractalMath.calcD0(quakes14),
+                h: FractalMath.calcH(quakes14)
+            };
+
+            // 4. 計算 Z-Score (7d & 14d)
+            const z7 = {
+                b: StatsEngine.getZScore(p7.b, stats7.b),
+                dt: StatsEngine.getZScore(p7.dt, stats7.dt),
+                da: StatsEngine.getZScore(p7.da, stats7.da),
+                d0: StatsEngine.getZScore(p7.d0, stats7.d0),
+                h: StatsEngine.getZScore(p7.h, stats7.h)
+            };
+
+            const z14 = {
+                b: StatsEngine.getZScore(p14.b, stats14.b),
+                dt: StatsEngine.getZScore(p14.dt, stats14.dt),
+                da: StatsEngine.getZScore(p14.da, stats14.da),
+                d0: StatsEngine.getZScore(p14.d0, stats14.d0),
+                h: StatsEngine.getZScore(p14.h, stats14.h)
+            };
+
+            // 5. 警示判定 (綜合 7d 與 14d)
+            // 邏輯：7d 是先鋒，14d 是確認。任一異常皆值得注意，但 7d 權重稍高
+            let alertLevel = 0; 
+            
+            // 檢查 b, Dt (下降異常)
+            if (z7.b < -1.5 || z14.b < -1.5) alertLevel++;
+            if (z7.dt < -1.5 || z14.dt < -1.5) alertLevel++;
+            // 檢查 Alpha (上升異常)
+            if (z7.da > 1.5 || z14.da > 1.5) alertLevel++;
+
+            // Render
+            const div = document.createElement('div');
+            const alertClass = alertLevel >= 2 ? 'alert-mode' : (alertLevel === 1 ? 'border-l-yellow-500' : 'border-l-slate-600');
+            div.className = `zone-card p-3 rounded-lg border-l-4 ${alertClass} mb-2`;
+            div.id = `card-${zone.id}`;
+            div.setAttribute('data-id', zone.id);
+            div.onclick = (e) => {
+                if (!e.target.closest('.close-btn') && !e.target.closest('.drag-handle')) focusZone(zone.id);
+            };
+
+            // Helper for Z badge
+            const renderZ = (val, type) => {
+                if (val === null) return `<span class="z-badge z-na">N/A</span>`;
+                const v = val.toFixed(1);
+                let cls = 'z-normal';
+                
+                // Sensitivity Rules
+                if (type === 'drop_bad' && val < -1.5) cls = 'z-warn-low'; // b, Dt
+                if (type === 'rise_bad' && val > 1.5) cls = 'z-warn-high'; // Alpha
+                
+                return `<span class="z-badge ${cls}">${val>0?'+':''}${v}</span>`;
+            };
+
+            div.innerHTML = `
+                <button class="close-btn" onclick="removeCard(this, event, '${zone.id}')">×</button>
+                <div class="flex items-center mb-2">
+                    <div class="drag-handle mr-2"><svg width="12" height="20" viewBox="0 0 6 10" fill="currentColor"><circle cx="2" cy="2" r="1"/><circle cx="5" cy="2" r="1"/><circle cx="2" cy="5" r="1"/><circle cx="5" cy="5" r="1"/><circle cx="2" cy="8" r="1"/><circle cx="5" cy="8" r="1"/></svg></div>
+                    <div class="font-bold text-slate-200 text-sm flex-1 truncate">${zone.name}</div>
+                    <div class="flex gap-1">
+                        <div class="text-[9px] text-slate-400 bg-slate-900 px-1.5 rounded border border-slate-700/50">7d:${quakes7.length}</div>
+                        <div class="text-[9px] text-slate-400 bg-slate-900 px-1.5 rounded border border-slate-700/50">14d:${quakes14.length}</div>
+                    </div>
+                </div>
+
+                ${quakes14.length < 10 ? `<div class="text-xs text-slate-500 text-center py-2">樣本皆不足 (14d < 10)</div>` : `
+                <div class="space-y-0.5">
+                    <!-- Header -->
+                    <div class="grid grid-cols-[1.4fr_0.8fr_1.1fr_1.1fr] gap-1 pb-1 border-b border-slate-700/50 mb-1">
+                        <span class="col-head">PARAM</span>
+                        <span class="col-head text-center">BG(90d)</span>
+                        <span class="col-head text-center">7d Z</span>
+                        <span class="col-head text-center">14d Z</span>
+                    </div>
+
+                    <!-- b-value (Drop is bad) -->
+                    <div class="param-row">
+                        <span class="text-cyan-400 font-bold">b-value</span>
+                        <span class="text-center text-slate-400">${b90.toFixed(2)}</span>
+                        <div class="text-center">${renderZ(z7.b, 'drop_bad')}</div>
+                        <div class="text-center">${renderZ(z14.b, 'drop_bad')}</div>
+                    </div>
+
+                    <!-- Dt (Drop is bad) -->
+                    <div class="param-row">
+                        <span class="text-yellow-400 font-bold">Dt (Time)</span>
+                        <span class="text-center text-slate-400">${dt90.toFixed(2)}</span>
+                        <div class="text-center">${renderZ(z7.dt, 'drop_bad')}</div>
+                        <div class="text-center">${renderZ(z14.dt, 'drop_bad')}</div>
+                    </div>
+
+                    <!-- Alpha (Rise is bad) -->
+                    <div class="param-row">
+                        <span class="text-fuchsia-400 font-bold">Δα (MF)</span>
+                        <span class="text-center text-slate-400">${da90!==-1?da90.toFixed(2):'-'}</span>
+                        <div class="text-center">${renderZ(z7.da, 'rise_bad')}</div>
+                        <div class="text-center">${renderZ(z14.da, 'rise_bad')}</div>
+                    </div>
+                    
+                    <!-- Slow Variables -->
+                    <div class="param-row opacity-60">
+                        <span class="text-purple-300">D₀ (Space)</span>
+                        <span class="text-center text-slate-500">${d090.toFixed(2)}</span>
+                        <div class="text-center">${renderZ(z7.d0, 'neutral')}</div>
+                        <div class="text-center">${renderZ(z14.d0, 'neutral')}</div>
+                    </div>
+                    <div class="param-row opacity-60">
+                        <span class="text-pink-300">H (Hurst)</span>
+                        <span class="text-center text-slate-500">${h90.toFixed(2)}</span>
+                        <div class="text-center">${renderZ(z7.h, 'neutral')}</div>
+                        <div class="text-center">${renderZ(z14.h, 'neutral')}</div>
+                    </div>
+                </div>
+                ${alertLevel >= 1 ? `<div class="mt-2 text-[10px] text-red-400 font-bold text-center animate-pulse border border-red-900 bg-red-900/20 rounded py-1">
+                    ${alertLevel>=2 ? '⚠️ 異常波動 (Anomaly)' : '⚡ 輕微擾動 (Notice)'}
+                </div>` : ''}
+                `}
+            `;
+            container.appendChild(div);
+        }
+
+        function init() {
+            const el = document.getElementById('zone-list');
+            sortableInstance = Sortable.create(el, {
+                animation: 150,
+                handle: '.drag-handle', 
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag'
+            });
+
+            world = Globe()(document.getElementById('globeViz'))
+                .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+                .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+                .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
+                .atmosphereColor('rgb(100, 40, 255)')
+                .atmosphereAltitude(0.15)
+                .pointLat('lat')
+                .pointLng('lng')
+                .pointColor(d => colors.mag(d.mag))
+                .pointAltitude(d => 0.01 + (d.mag - 4) * 0.05)
+                .pointRadius(d => 0.2 + (d.mag - 4) * 0.3)
+                .pointsMerge(false)
+                .onPointHover(handleHover);
+
+            world.controls().autoRotate = true;
+            world.controls().autoRotateSpeed = 0.5;
+
+            // Update clock
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('gps-date').innerText = now.toISOString().split('T')[0];
+                document.getElementById('gps-time').innerText = now.toTimeString().split(' ')[0];
+            }, 1000);
+
+            fetchData();
+        }
+
+        function focusZone(id) {
+            document.querySelectorAll('.zone-card').forEach(c => c.classList.remove('active'));
+            const card = document.getElementById(`card-${id}`);
+            if(card) {
+                card.classList.add('active');
+                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            const zone = ZONES.find(z => z.id === id);
+            if (zone) world.pointOfView({ lat: zone.center.lat, lng: zone.center.lng, altitude: zone.center.alt }, 1500);
+        }
+
+        function removeCard(btn, event, zoneId) {
+            event.stopPropagation();
+            const card = btn.closest('.zone-card');
+            card.style.opacity = '0';
+            setTimeout(() => card.remove(), 200);
+        }
+
+        function resetLayout() {
+            document.getElementById('zone-list').innerHTML = '';
+            fetchData(); 
+        }
+
+        function handleHover(quake) {
+            const hud = document.getElementById('quake-hud');
+            if (quake) {
+                document.body.style.cursor = 'pointer';
+                hud.classList.remove('hidden');
+                document.getElementById('hud-place').innerText = quake.place;
+                document.getElementById('hud-mag').innerText = quake.mag.toFixed(1);
+                document.getElementById('hud-mag').style.color = colors.mag(quake.mag);
+                document.getElementById('hud-depth').innerText = quake.depth + ' km';
+                document.getElementById('hud-time').innerText = quake.time.toLocaleDateString();
+            } else {
+                document.body.style.cursor = 'default';
+                hud.classList.add('hidden');
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            if(world) world.width(window.innerWidth).height(window.innerHeight);
+        });
+
+        init();
+    </script>
+</body>
+</html>
