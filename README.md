@@ -14,7 +14,7 @@
 Unlike traditional magnitude-based alerts, this system utilizes a multi-parameter fractal analysis engine to monitor the entropy and clustering behaviors of seismic events across global tectonic zones.
 
 ### 🚀 Try it Live
-[**Click here to launch the Web App**](https://您的帳號.github.io/專案名稱/)
+[**Click here to launch the Web App**](https://unclejoe0306.github.io/earthquake_global/)
 
 ---
 
