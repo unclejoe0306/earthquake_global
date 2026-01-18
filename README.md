@@ -39,9 +39,21 @@ You can download the latest Android APK from the **[Releases Page](../../release
 2.  Allow installation from unknown sources in your Android settings.
 3.  Launch the app (Internet connection required).
 
-## 📊 Methodology
+## 📊 
 
 This software implements a sliding window approach (7-day & 14-day) to compute fractal dimensions. Anomalies are flagged when parameters deviate significantly ($|Z| > 2.0$) from the background noise level.
+
+## ☕ Support 📊 Methodology
+
+This is an independent research project. If you find it useful, consider supporting its development.
+1. BuyMeACoffee https://buymeacoffee.com/unclejoe038
+2. USDT/ETH/BTC BNB Smart Chain (BEP-20) address: 0xf7c4806d5ea6d965f8eb3158416bce88f9d261d8
+
+## ⚠️ Disclaimer 
+
+This software is for scientific research and educational purposes only. It is not an official early warning system. Do not use it for life-safety decisions.
+
+Copyright © 2025 Yu-Ching Chou. Licensed under the MIT License.
 
 ## 📖 Citation
 
@@ -61,3 +73,4 @@ If you use this software in your research, please cite it as follows:
   doi          = {10.5281/zenodo.18284864},
   url          = {[https://doi.org/10.5281/zenodo.18284864](https://doi.org/10.5281/zenodo.18284864)}
 }
+
