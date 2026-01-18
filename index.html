@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Global Seismic Fractal Analysis War Room PRO v4.2.2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/d3@7"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/globe.gl@2.26.4/dist/globe.gl.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Roboto+Mono:wght@400;500;700&display=swap');
+
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #020617; 
+            font-family: "Noto Sans TC", sans-serif; 
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        
+        .font-mono { font-family: "Roboto Mono", monospace; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Glass Panel */
+        .glass-panel {
+            background-color: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        /* Zone Card Styles */
+        .zone-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(71, 85, 105, 0.4);
+            transition: all 0.3s ease; 
+            cursor: default; 
+            position: relative;
+            touch-action: pan-y;
+            padding: 0.5rem;
+        }
+        .zone-card:hover {
+            background: rgba(51, 65, 85, 0.8);
+            border-color: rgba(96, 165, 250, 0.5);
+        }
+        .zone-card.active {
+            border-color: #3b82f6;
+            background: rgba(30, 58, 138, 0.5);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Alert Levels */
+        .zone-card.alert-1 {
+            border-color: rgba(248, 113, 113, 0.9);
+            background: rgba(127, 29, 29, 0.28);
+            box-shadow: 0 0 18px rgba(248, 113, 113, 0.15);
+        }
+        .zone-card.alert-2 {
+            border-color: rgba(239, 68, 68, 0.95);
+            background: rgba(127, 29, 29, 0.42);
+            box-shadow: 0 0 22px rgba(239, 68, 68, 0.22);
+        }
+        .zone-card.alert-3 {
+            border-color: rgba(220, 38, 38, 1);
+            background: rgba(127, 29, 29, 0.58);
+            box-shadow: 0 0 28px rgba(220, 38, 38, 0.3);
+        }
+        /* Sync Guard Highlight */
+        .zone-card.sync-lock-border {
+            border-right: 4px solid #facc15; 
+        }
+
+        /* Sortable */
+        .sortable-ghost { opacity: 0.2; background: #3b82f6; }
+        .sortable-drag { cursor: grabbing; opacity: 1 !important; background: rgba(30, 58, 138, 0.95); box-shadow: 0 10px 25px rgba(0,0,0,0.5); transform: scale(1.02); }
+
+        .drag-handle { cursor: grab; padding: 4px; color: #64748b; transition: color 0.2s; touch-action: none; }
+        .drag-handle:hover { color: #cbd5e1; }
+        .drag-handle:active { cursor: grabbing; color: #38bdf8; }
+
+        .close-btn { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 16px; background: rgba(0,0,0,0.2); border: 1px solid transparent; transition: all 0.2s; z-index: 10; cursor: pointer; }
+        .close-btn:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; border-color: #ef4444; }
+
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+
+        #left-panel {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in-out;
+            max-height: 98dvh;
+        }
+        
+        .panel-hidden {
+            transform: translateX(-120%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Z-Score Badge Styles */
+        .z-badge {
+            font-size: 8px;
+            padding: 1px 0px;
+            border-radius: 3px;
+            font-family: "Roboto Mono", monospace;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        .z-normal { color: #94a3b8; background: rgba(148, 163, 184, 0.1); }
+        .z-warn-low { color: #facc15; background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.3); font-weight: bold; } 
+        .z-warn-high { color: #f472b6; background: rgba(244, 114, 182, 0.2); border: 1px solid rgba(244, 114, 182, 0.3); font-weight: bold; }
+        .z-na { color: #475569; border: 1px dashed #475569; }
+        
+        /* Param Grid - 5 Columns Layout (Optimized v4.2) */
+        .param-grid { 
+            display: grid; 
+            grid-template-columns: 24px 1fr 1fr 1fr 1fr; /* Label, BG, 7Z, 14Z, dZ */
+            gap: 2px; 
+            align-items: center; 
+        }
+        .param-row { display: contents; }
+        .col-head { 
+            font-size: 8px; 
+            color: rgba(148,163,184,0.8); 
+            font-family: "Roboto Mono", monospace; 
+            text-align: center;
+            white-space: nowrap;
+        }
+        .p-val-text { font-size: 9px; font-family: "Roboto Mono", monospace; }
+        .p-label-text { font-size: 9px; font-family: "Roboto Mono", monospace; }
+
+        /* ΔZ Colors */
+        .dz-val { font-weight: 700; font-family: "Roboto Mono", monospace; font-size: 9px; }
+        .dz-pos { color: #f472b6; }
+        .dz-neg { color: #facc15; }
+        .dz-neu { color: #64748b; }
+
+        /* Sync Guard Section */
+        .sync-box {
+            margin-top: 2px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-family: "Roboto Mono", monospace;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid transparent;
+        }
+        .sync-lock-alert {
+            background: rgba(234, 179, 8, 0.15);
+            border-color: rgba(234, 179, 8, 0.4);
+            color: #fde047;
+        }
+        .sync-release-alert {
+            background: rgba(244, 114, 182, 0.15);
+            border-color: rgba(244, 114, 182, 0.4);
+            color: #f9a8d4;
+        }
+
+        /* Chart Modal - Draggable Setup */
+        #chart-modal, #donate-modal {
+            z-index: 10000;
+            position: fixed;
+            pointer-events: none; 
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            align-items: center; 
+            justify-content: center;
+        }
+
+        #chart-modal.hidden, #donate-modal.hidden { display: none !important; }
+
+        #chart-modal-content {
+            pointer-events: auto;
+            background-color: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(51, 65, 85, 1);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+            border-radius: 0.75rem;
+            width: 95vw;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 0.3s ease;
+            position: absolute; 
+        }
+        
+        /* Donate Modal Content */
+        #donate-modal-content {
+            pointer-events: auto;
+            background-color: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(244, 114, 182, 0.3); /* Pink tint */
+            box-shadow: 0 0 50px rgba(244, 114, 182, 0.15);
+            border-radius: 1rem;
+            width: 90vw;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 0.3s ease;
+            position: relative;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        #chart-drag-handle { cursor: grab; }
+        #chart-drag-handle:active { cursor: grabbing; }
+
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        
+        .mode-btn {
+          font-size: 10px;
+          padding: 4px 8px;
+          border-radius: 6px;
+          border: 1px solid rgba(100,116,139,0.55);
+          background: rgba(15,23,42,0.55);
+          color: #cbd5e1;
+          transition: all 0.2s;
+          font-family: "Roboto Mono", monospace;
+          white-space: nowrap;
+        }
+        .mode-btn:hover { background: rgba(51,65,85,0.7); color: #fff; }
+        .mode-btn.active {
+          background: rgba(30,58,138,0.55);
+          border-color: rgba(59,130,246,0.55);
+          color: #fff;
+        }
+
+        /* Tab Buttons */
+        .tab-btn {
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(100,116,139,0.55);
+            background: rgba(15,23,42,0.55);
+            color: #cbd5e1;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background: rgba(30,58,138,0.55);
+            border-color: rgba(59,130,246,0.55);
+            color: #fff;
+        }
+        .tab-btn:hover {
+            background: rgba(51,65,85,0.7);
+            color: #fff;
+        }
+        
+        /* Copy Address Interaction */
+        .copy-box {
+            background: rgba(2, 6, 23, 0.6);
+            border: 1px solid rgba(51, 65, 85, 0.8);
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .copy-box:hover {
+            border-color: #22d3ee;
+            background: rgba(2, 6, 23, 0.8);
+        }
+        .copy-box:active {
+            transform: scale(0.98);
+        }
+        .copy-tooltip {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #22d3ee;
+            color: #0f172a;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .copy-tooltip.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <div id="loader" class="fixed inset-0 bg-[#020617] z-[9999] flex flex-col items-center justify-center text-white transition-opacity duration-500">
+        <div class="w-16 h-16 border-4 border-slate-700 border-t-cyan-500 rounded-full animate-spin mb-4"></div>
+        <div class="text-xl font-bold tracking-[0.2em] text-cyan-400 mb-2">GLOBAL FRACTAL PRO V4.2.2</div>
+        <div id="loader-status" class="text-sm text-slate-400 font-mono">系統初始化中...</div>
+        <div id="calc-progress" class="text-xs text-slate-500 font-mono mt-2 w-64 text-center"></div>
+    </div>
+
+    <div id="globeViz"></div>
+
+    <button id="btn-show-panel" onclick="togglePanel(true)" class="hidden absolute top-4 left-4 z-20 glass-panel p-2 rounded-lg text-cyan-400 hover:text-white hover:bg-slate-700 transition flex items-center gap-2 border border-cyan-500/30 group">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        <span class="text-xs font-bold font-mono opacity-0 group-hover:opacity-100 transition-opacity duration-300 w-0 group-hover:w-auto overflow-hidden whitespace-nowrap">戰情室</span>
+    </button>
+
+    <div id="left-panel" class="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-[96vw] md:w-[420px] flex flex-col gap-2 pointer-events-none">
+        
+        <div class="glass-panel p-3 rounded-xl pointer-events-auto shrink-0 border-t-4 border-t-cyan-500 shadow-xl relative flex flex-col">
+            <div class="flex justify-between items-start mb-1 gap-2">
+                <div class="flex-1 min-w-0 pt-0.5">
+                    <h1 class="text-base md:text-lg font-bold text-white flex items-center gap-2 leading-tight">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2"><path d="M2 12h2l3 9 4-18 4 18 3-9h2"/></svg>
+                        <span id="header-title">全球強震碎形戰情室 PRO v4.2.2</span> 
+                    </h1>
+                </div>
+
+                <div class="flex gap-0.5 items-center shrink-0">
+                    <button id="btn-lang" onclick="toggleLanguage()" class="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-1.5 py-1 rounded border border-slate-600 shadow-sm whitespace-nowrap">中/EN</button>
+                    <button onclick="openDonateModal()" class="text-pink-400 hover:text-white hover:bg-pink-900/50 p-1 rounded transition border border-transparent hover:border-pink-500/50" title="Buy me a coffee">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    </button>
+                    <button id="btn-rotate" onclick="toggleRotation()" class="text-slate-400 hover:text-white hover:bg-slate-700 p-1 rounded transition border border-transparent hover:border-slate-600">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    </button>
+                    <button id="btn-restore" onclick="restoreHiddenZoneCards()" class="hidden text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-1.5 py-1 rounded transition flex items-center gap-1 border border-slate-600 whitespace-nowrap">
+                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9"></path><path d="M3 4v5h5"></path></svg>
+                         <span id="lbl-restore">恢復</span>
+                    </button>
+                    <button onclick="resetLayout()" class="text-[9px] bg-slate-700 hover:bg-slate-600 text-slate-200 px-1.5 py-1 rounded transition flex items-center gap-1 border border-slate-600 whitespace-nowrap">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                        <span class="hidden md:inline" id="lbl-reset">重置</span>
+                    </button>
+                    <button onclick="togglePanel(false)" class="text-slate-400 hover:text-white hover:bg-slate-700 p-1 rounded transition ml-0.5">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex items-center mb-1 flex-wrap gap-y-1">
+                <span class="text-[10px] font-bold text-yellow-300 bg-yellow-500/10 border border-yellow-500/30 px-1.5 py-0.5 rounded tracking-wide mr-2">SYNC GUARD</span>
+                <div id="global-status" class="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                    CONNECTING...
+                </div>
+            </div>
+            
+            <p id="header-subtitle" class="text-[9px] text-slate-400 font-mono hidden md:block">Monitor: 5-Param Z-Score + ΔZ Trend Suite & Sync Lock</p>
+            
+            <div class="mt-1 pt-1 border-t border-slate-700/50 flex justify-start">
+                 <p id="copyright-text" class="text-[9px] text-slate-500">版權所有 © 2025 周裕清</p>
+            </div>
+
+            <div class="mt-2 flex items-center justify-start gap-2 pointer-events-auto">
+                <button id="tab-core" class="tab-btn active" onclick="setActiveTab('core')">
+                    <span class="text-cyan-300">●</span><span>原始分區</span>
+                </button>
+                <button id="tab-composite" class="tab-btn" onclick="setActiveTab('composite')">
+                    <span class="text-purple-300">⊕</span><span>組合分區</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="zone-list" class="rounded-xl flex-1 overflow-y-auto custom-scroll pointer-events-auto min-h-0 pb-4 grid grid-cols-2 md:flex md:flex-col gap-2"></div>
+
+        <div class="glass-panel p-2 rounded-xl pointer-events-auto shrink-0 text-[9px] text-slate-400 grid grid-cols-2 gap-1 shadow-xl mb-4 md:mb-0">
+            <div id="legend-rule"><span class="text-white font-bold">警戒規則:</span> |Z| &gt; 2.0 (前3參)</div>
+            <div id="legend-lv1"><span class="text-red-400 font-bold">輕度:</span> 任 1 個異常</div>
+            <div id="legend-lv2"><span class="text-red-500 font-bold">中度:</span> 任 2 個異常</div>
+            <div id="legend-lv3"><span class="text-red-600 font-bold">高度:</span> 3 個以上異常</div>
+            <div id="legend-sync" class="col-span-2 text-slate-500 border-t border-slate-700/50 pt-1 mt-1">
+                Sync Guard: Dir&lt;0 (Descent) + S&gt;0.3 = <span class="text-yellow-400">LOCK (閉鎖)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="absolute top-4 right-4 z-20 pointer-events-none hidden md:block">
+        <div class="glass-panel px-4 py-2 rounded-lg flex flex-col items-end border border-slate-700/50">
+            <div id="gps-label" class="text-[10px] text-slate-400 font-bold tracking-widest mb-0.5">當地時間</div>
+            <div id="gps-time" class="text-2xl font-mono font-bold text-cyan-300 tabular-nums leading-none drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]">00:00:00</div>
+            <div id="gps-date" class="text-xs text-slate-500 font-mono mt-1">YYYY-MM-DD</div>
+        </div>
+    </div>
+
+    <div id="quake-hud" class="hidden absolute top-24 right-4 z-20 w-64 glass-panel p-4 rounded-xl border-l-4 border-red-500 pointer-events-none animate-fade-in transition-opacity">
+        <div class="flex justify-between items-start mb-2">
+            <span id="hud-label" class="text-[10px] font-mono text-red-400">EVENT DETECTED</span>
+            <span id="hud-mag" class="text-2xl font-bold text-white"></span>
+        </div>
+        <h2 id="hud-place" class="text-sm font-bold text-slate-200 leading-tight mb-2 line-clamp-2"></h2>
+        <div class="grid grid-cols-2 gap-y-1 text-[10px] text-slate-400 font-mono">
+            <span>DEPTH:</span> <span id="hud-depth" class="text-slate-200"></span>
+            <span>TIME:</span> <span id="hud-time" class="text-slate-200"></span>
+        </div>
+    </div>
+
+    <div id="chart-modal" class="hidden">
+        <div id="chart-modal-content">
+            <div id="chart-drag-handle" class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2 p-4 select-none group">
+                <h3 id="chart-title" class="text-sm font-bold text-slate-200 flex items-center gap-2 pointer-events-none">
+                    <span class="text-cyan-400">📈</span> Trend Analysis
+                </h3>
+                <div class="flex items-center gap-2">
+                    <div class="text-slate-600 group-hover:text-slate-400 transition mr-1" title="Drag">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"></path></svg>
+                    </div>
+                    <button onclick="closeChartModal()" class="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800 transition cursor-pointer">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="px-4 pb-4">
+                <div id="dz-mode-bar" class="hidden mb-2">
+                    <div class="flex flex-wrap gap-2 justify-start">
+                      <button class="mode-btn" id="mode-slope7" onclick="setDzMode('slope7')">Slope7 (Default)</button>
+                      <button class="mode-btn" id="mode-dz7" onclick="setDzMode('dz7')">ΔZ7</button>
+                      <button class="mode-btn" id="mode-dz3" onclick="setDzMode('dz3')">ΔZ3</button>
+                      <button class="mode-btn" id="mode-dz1" onclick="setDzMode('dz1')">ΔZ1</button>
+                    </div>
+                </div>
+
+                <div class="chart-container flex-1 bg-slate-950/50 rounded-lg p-2 border border-slate-800">
+                    <canvas id="trendChart"></canvas>
+                </div>
+                
+                <div class="flex justify-end gap-2 mt-3 pt-2 border-t border-slate-800">
+                    <button onclick="exportCSV()" class="text-[10px] bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 px-3 py-1.5 rounded border border-emerald-700/50 flex items-center gap-1 transition">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span id="btn-csv">CSV</span>
+                    </button>
+                    <button onclick="exportPNG()" class="text-[10px] bg-cyan-900/80 hover:bg-cyan-800 text-cyan-200 px-3 py-1.5 rounded border border-cyan-700/50 flex items-center gap-1 transition">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                        <span id="btn-png">PNG</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="donate-modal" class="hidden">
+        <div id="donate-modal-content">
+            <button onclick="closeDonateModal()" class="absolute top-3 right-3 text-slate-500 hover:text-white transition">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            
+            <div class="flex justify-center mb-4">
+                <div class="bg-pink-500/10 p-4 rounded-full border border-pink-500/30">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="#f472b6"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                </div>
+            </div>
+            
+            <h3 id="donate-title" class="text-lg font-bold text-white mb-2">Support Research</h3>
+            <p id="donate-desc" class="text-xs text-slate-300 mb-6 leading-relaxed font-mono">
+                Your support fuels the continuous optimization of algorithms and server maintenance. If this system aids your research, please consider a small donation to help build a better seismic warning ecosystem.
+            </p>
+            
+            <div class="w-full">
+                <div class="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-1 px-1">
+                    <span>USDT / BTC / ETH</span>
+                    <span class="text-yellow-400">BNB Smart Chain (BEP20)</span>
+                </div>
+                <div class="copy-box" onclick="copyAddress()">
+                    <div id="copy-tooltip" class="copy-tooltip">COPIED!</div>
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="font-mono text-[11px] text-cyan-300 break-all text-left">0xf7c4806d5ea6d965f8eb3158416bce88f9d261d8</span>
+                        <svg class="text-slate-500 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </div>
+                </div>
+                <div class="text-[9px] text-slate-500 mt-2 text-right">
+                    * Click address to copy
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 設定與狀態 ---
+        let world;
+        let allQuakes = [];
+        let sortableInstance;
+        let hiddenZones = new Set();
+        let isRotating = true;
+        let currentLang = 'zh';
+        let chartInstance = null;
+        let activeTab = 'core'; // 'core' or 'composite'
+        
+        // Chart State
+        let chartState = {
+            type: "Z",
+            dzMode: "slope7",
+            zoneName: "",
+            z7Series_7days: null, 
+            z7Series_14days: null,
+            dzSeries_7days: null,
+        };
+
+        const BASELINE_DAYS = 90;
+        const FETCH_DAYS = 110;
+        const DZ_CLAMP_MIN = -3.0;
+        const DZ_CLAMP_MAX =  3.0;
+        
+        // Donate Address
+        const DONATE_ADDR = "0xf7c4806d5ea6d965f8eb3158416bce88f9d261d8";
+
+        const colors = {
+            mag: d3.scaleLinear().domain([4, 6, 8]).range(['#ffd700', '#ff8c00', '#ff0000']).clamp(true)
+        };
+
+        // --- Filter Functions (Optimized v4.2.2) ---
+        const F_GLOBAL = () => true;
+        const F_TW = q => q.lat > 10 && q.lat < 30 && q.lng > 118 && q.lng < 132;
+        const F_JP = q => q.lat > 25 && q.lat < 55 && q.lng > 120 && q.lng < 160;
+        
+        // v4.2.2 Optimized: Merged MMR into Indo-Sunda
+        const F_INDO_SUNDA = q => {
+            // Original SEA + Myanmar/Andaman extension
+            // Core Indonesia: lat > -15 && lat < 25 && lng > 90 && lng < 145
+            // Myanmar Extension: lat > -10 && lat < 28 && lng > 75 && lng < 100
+            const isIndo = q.lat > -15 && q.lat < 25 && q.lng > 90 && q.lng < 145;
+            const isMmr = q.lat > -10 && q.lat < 28 && q.lng > 75 && q.lng < 100;
+            return isIndo || isMmr;
+        };
+
+        const F_NA = q => q.lat > 30 && q.lat < 65 && q.lng > -170 && q.lng < -110;
+        const F_CAM = q => q.lat > 5 && q.lat < 32 && q.lng > -112 && q.lng < -60;
+        const F_SA = q => q.lat > -60 && q.lat < 15 && q.lng > -85 && q.lng < -60;
+        const F_SWPAC = q => (q.lat > -50 && q.lat < -10) && ((q.lng > 160 && q.lng < 180) || (q.lng > -180 && q.lng < -150));
+        
+        // v4.2.2 Optimized: Merged EAR into EU/Med
+        const F_EU_AFR = q => {
+            // Original EU: lat > 25 && lat < 50 && lng > 20 && lng < 100
+            // Original EAR: lat > -25 && lat < 20 && lng > 28 && lng < 50
+            const isEu = q.lat > 20 && q.lat < 50 && q.lng > 10 && q.lng < 100; // Expanded slightly west for Italy/Spain
+            const isAfr = q.lat > -30 && q.lat <= 20 && q.lng > 25 && q.lng < 55;
+            return isEu || isAfr;
+        };
+
+        // --- CORE ZONES (v4.2.2 Redefined) ---
+        const CORE_ZONES = [
+            { id: 'global', name: '🌍 全球總覽 (Global)', nameEn: '🌍 Global View', filter: F_GLOBAL, center: { lat: 20, lng: 0, alt: 2.5 } },
+            { id: 'tw_special', name: '🇹🇼 琉球/台灣/菲律賓海溝', nameEn: '🇹🇼 Ryukyu/TW/PH Trench', filter: F_TW, center: { lat: 23.5, lng: 121, alt: 0.6 } },
+            { id: 'jp', name: '🇯🇵 日本/千島海溝', nameEn: '🇯🇵 Japan/Kuril Trench', filter: F_JP, center: { lat: 38, lng: 140, alt: 0.8 } },
+            
+            // Merged Zone 1: Indo-Sunda-Andaman
+            { id: 'indo_sunda', name: '🇮🇩🇲🇲 印尼-巽他-安達曼弧', nameEn: '🇮🇩🇲🇲 Indo-Sunda-Andaman Arc', filter: F_INDO_SUNDA, center: { lat: 5, lng: 100, alt: 1.1 } },
+            
+            { id: 'na', name: '🇺🇸 北美西岸/阿留申', nameEn: '🇺🇸 N. America/Aleutian', filter: F_NA, center: { lat: 45, lng: -130, alt: 1.0 } },
+            { id: 'cam', name: '🇲🇽 中美洲—墨西哥—加勒比', nameEn: '🇲🇽 Central America & Caribbean', filter: F_CAM, center: { lat: 18, lng: -86, alt: 1.1 } },
+            { id: 'sa', name: '🇨🇱 南美洲 (安地斯)', nameEn: '🇨🇱 South America (Andes)', filter: F_SA, center: { lat: -20, lng: -70, alt: 1.2 } },
+            { id: 'swpac', name: '🇳🇿 西南太平洋島弧', nameEn: '🇳🇿 SW Pacific Arc', filter: F_SWPAC, center: { lat: -25, lng: 180, alt: 1.3 } },
+            
+            // Merged Zone 2: Eurasia-Africa
+            { id: 'eu_africa_himalaya', name: '🇪🇺🌍 歐亞非-阿爾卑斯-喜馬拉雅帶', nameEn: '🇪🇺🌍 Eurasia-Africa-Himalaya', filter: F_EU_AFR, center: { lat: 20, lng: 45, alt: 1.4 } }
+        ];
+
+        // --- COMPOSITE ZONES (Adjusted for v4.2.2) ---
+        const COMPOSITE_ZONES = [
+            { id: 'wpac_north', name: 'WPAC-NORTH (琉球台菲+日本千島)', nameEn: 'WPAC-NORTH (Ryukyu/TW/PH+Japan/Kuril)', filter: q => F_TW(q) || F_JP(q), center: { lat: 30, lng: 135, alt: 1.2 } },
+            // Removed 'indo_arc' as it is now essentially the CORE 'indo_sunda' zone.
+            { id: 'epac_north', name: 'EPAC-NORTH (北美+中美加勒比)', nameEn: 'EPAC-NORTH (NA+Caribbean)', filter: q => F_NA(q) || F_CAM(q), center: { lat: 30, lng: -100, alt: 1.5 } },
+            { id: 'americas_sub', name: 'AMERICAS-SUBDUCTION (中美+安地斯)', nameEn: 'AMERICAS-SUBDUCTION (CAM+Andes)', filter: q => F_CAM(q) || F_SA(q), center: { lat: -10, lng: -75, alt: 1.5 } },
+            { id: 'npac_arc', name: 'N-PAC-ARC (日本千島+北美阿留申)', nameEn: 'N-PAC-ARC (Japan/Kuril+Aleutian)', filter: q => F_JP(q) || F_NA(q), center: { lat: 50, lng: 180, alt: 1.5 } },
+            { id: 'wpac_super', name: 'W-PAC-SUPERARC (印尼+西南太平洋)', nameEn: 'W-PAC-SUPERARC (Indonesia+SW Pacific)', filter: q => F_INDO_SUNDA(q) || F_SWPAC(q), center: { lat: -10, lng: 150, alt: 1.5 } }
+        ];
+
+        const i18n = {
+            zh: {
+                title: '全球強震碎形戰情室 PRO v4.2.2',
+                subtitle: '監控: 5參數 Z-Score + ΔZ Trend Suite & Sync Lock (Sync Guard)',
+                gps: '當地時間',
+                hud: '偵測到地震事件',
+                status_dl: '下載 USGS 全球地震目錄 (M≥4.0, 110天)...',
+                status_init: '建立 90 天背景分佈模型 (v4.2.2 優化分區)...',
+                status_ana: '分析區域',
+                rule: '<span class="text-white font-bold">警戒規則:</span> |Z| &gt; 2.0 (前3參)',
+                lv1: '<span class="text-red-400 font-bold">輕度:</span> 任 1 個異常',
+                lv2: '<span class="text-red-500 font-bold">中度:</span> 任 2 個異常',
+                lv3: '<span class="text-red-600 font-bold">高度:</span> 3 個以上異常',
+                restore: '恢復',
+                reset: '重置',
+                trend: 'Z Trend',
+                dz_trend: 'ΔZ Trend',
+                normal: '正常 (監測中)',
+                alert1: '輕度警戒',
+                alert2: '中度警戒',
+                alert3: '高度警戒',
+                chart_title: '7日 Z-Score 趨勢分析',
+                chart_title_dz: 'ΔZ Trend Suite (穩健化)',
+                copyright: '版權所有 © 2025 周裕清',
+                note: 'Sync Guard: Dir<0 (Descent) + S>0.3 = LOCK',
+                btn_csv: 'CSV',
+                btn_png: 'PNG',
+                tab_core: '原始分區 (優化版)',
+                tab_comp: '組合分區',
+                donate_title: '支持學術研究',
+                donate_desc: '您的支持是我持續優化演算法與維護伺服器的動力。若本系統對您的研究有所幫助，歡迎小額贊助，共建更完善的地震預警生態。',
+                copy_tooltip: '已複製!'
+            },
+            en: {
+                title: 'Global Fractal War Room PRO v4.2.2',
+                subtitle: 'Monitor: 5-Param Z-Score + ΔZ Trend Suite & Sync Lock (Sync Guard)',
+                gps: 'Local Time',
+                hud: 'EVENT DETECTED',
+                status_dl: 'Downloading USGS Global Catalog (M≥4.0, 110 days)...',
+                status_init: 'Building 90-day baseline (v4.2.2 Optimized Zones)...',
+                status_ana: 'Analyzing',
+                rule: '<span class="text-white font-bold">Rule:</span> |Z| &gt; 2.0 (1st 3 Params)',
+                lv1: '<span class="text-red-400 font-bold">Low:</span> Any 1 anomaly',
+                lv2: '<span class="text-red-500 font-bold">Mid:</span> Any 2 anomalies',
+                lv3: '<span class="text-red-600 font-bold">High:</span> 3+ anomalies',
+                restore: 'Restore',
+                reset: 'Reset',
+                trend: 'Z Trend',
+                dz_trend: 'ΔZ Trend',
+                normal: 'Normal (Monitoring)',
+                alert1: 'Low Alert',
+                alert2: 'Medium Alert',
+                alert3: 'High Alert',
+                chart_title: '7-Day Z-Score Trend Analysis',
+                chart_title_dz: 'ΔZ Trend Suite (Robustified)',
+                copyright: 'Copyright © 2025 Yu-Ching Chou',
+                note: 'Sync Guard: Dir<0 (Descent) + S>0.3 = LOCK',
+                btn_csv: 'CSV',
+                btn_png: 'PNG',
+                tab_core: 'Core Zones (Optimized)',
+                tab_comp: 'Composite',
+                donate_title: 'Support Research',
+                donate_desc: 'Your support fuels the continuous optimization of algorithms and server maintenance. If this system aids your research, please consider a small donation to help build a better seismic warning ecosystem.',
+                copy_tooltip: 'COPIED!'
+            }
+        };
+
+        function t(key) { return i18n[currentLang][key]; }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            applyStaticTexts();
+            renderCurrentTab();
+        }
+
+        function applyStaticTexts() {
+            document.getElementById('header-title').innerText = t('title');
+            document.getElementById('header-subtitle').innerText = t('subtitle');
+            document.getElementById('gps-label').innerText = t('gps');
+            document.getElementById('hud-label').innerText = t('hud');
+            document.getElementById('lbl-reset').innerText = t('reset');
+            document.getElementById('lbl-restore').innerText = t('restore');
+            document.getElementById('legend-rule').innerHTML = t('rule');
+            document.getElementById('legend-lv1').innerHTML = t('lv1');
+            document.getElementById('legend-lv2').innerHTML = t('lv2');
+            document.getElementById('legend-lv3').innerHTML = t('lv3');
+            document.getElementById('copyright-text').innerText = t('copyright');
+            document.getElementById('legend-sync').innerHTML = t('note');
+            document.getElementById('btn-csv').innerText = t('btn_csv');
+            document.getElementById('btn-png').innerText = t('btn_png');
+            document.querySelector('#tab-core span:last-child').innerText = t('tab_core');
+            document.querySelector('#tab-composite span:last-child').innerText = t('tab_comp');
+            
+            // Donate Modal Texts
+            document.getElementById('donate-title').innerText = t('donate_title');
+            document.getElementById('donate-desc').innerText = t('donate_desc');
+            document.getElementById('copy-tooltip').innerText = t('copy_tooltip');
+            
+            if(!document.getElementById("chart-modal").classList.contains("hidden")) {
+                if(chartState.type === "Z") {
+                    document.getElementById("chart-title").innerHTML = `<span class="text-cyan-400">📈</span> ${t('chart_title')} - ${chartState.zoneName}`;
+                } else {
+                    document.getElementById("chart-title").innerHTML = `<span class="text-pink-300">📈</span> ${t('chart_title_dz')} - ${chartState.zoneName}`;
+                }
+            }
+        }
+
+        function setActiveTab(tab) {
+            activeTab = tab;
+            document.getElementById('tab-core').classList.toggle('active', tab === 'core');
+            document.getElementById('tab-composite').classList.toggle('active', tab === 'composite');
+            renderCurrentTab();
+        }
+
+        function getActiveZones() {
+            return activeTab === 'core' ? CORE_ZONES : COMPOSITE_ZONES;
+        }
+
+        async function renderCurrentTab() {
+            const container = document.getElementById('zone-list');
+            container.innerHTML = '';
+            const zones = getActiveZones();
+            // Reset hidden zones when switching tabs? Or keep them separate? 
+            // For simplicity, we clear hidden zones on tab switch or just ignore them.
+            // Let's clear to avoid confusion.
+            hiddenZones.clear();
+            updateRestoreButton();
+
+            for (const zone of zones) {
+                const zoneQuakes = allQuakes.filter(zone.filter);
+                await processZone(zone, zoneQuakes);
+            }
+        }
+
+        function toggleRotation() {
+            isRotating = !isRotating;
+            if (world) world.controls().autoRotate = isRotating;
+            const btn = document.getElementById('btn-rotate');
+            btn.classList.toggle('text-yellow-400', !isRotating);
+        }
+
+        function togglePanel(show) {
+            const panel = document.getElementById('left-panel');
+            const showBtn = document.getElementById('btn-show-panel');
+            if (show) {
+                panel.classList.remove('panel-hidden');
+                showBtn.classList.add('hidden');
+            } else {
+                panel.classList.add('panel-hidden');
+                showBtn.classList.remove('hidden');
+            }
+        }
+
+        function safeFormat(v, digits = 2) {
+            if (v === null || v === undefined || isNaN(v)) return "-";
+            return Number(v).toFixed(digits);
+        }
+
+        function clamp(x, lo, hi) {
+            const v = Number(x);
+            if (!Number.isFinite(v)) return 0;
+            return Math.max(lo, Math.min(hi, v));
+        }
+
+        function linregSlope(xs, ys) {
+            const n = xs.length;
+            if (n < 2) return 0;
+            let sx = 0, sy = 0, sxx = 0, sxy = 0;
+            for (let i = 0; i < n; i++) {
+                const x = xs[i], y = ys[i];
+                sx += x; sy += y; sxx += x*x; sxy += x*y;
+            }
+            const denom = n*sxx - sx*sx;
+            if (denom === 0) return 0;
+            return (n*sxy - sx*sy)/denom;
+        }
+
+        function formatDz(delta) {
+            const v = Number(delta);
+            if (!Number.isFinite(v)) return { cls: "", txt: "-" };
+            const txt = (v >= 0 ? "+" : "") + v.toFixed(2);
+            const cls = v > 0.05 ? "dz-pos" : (v < -0.05 ? "dz-neg" : "dz-neu");
+            return { cls, txt };
+        }
+
+        // --- 1. ROBUST FRACTAL MATH ---
+const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filter(e=>e>=4);return r.length<3?NaN:Math.log10(Math.E)/(r.reduce((e,r)=>e+r,0)/r.length-4+.05)},calcD0:e=>{if(e.length<5)return NaN;let r=e.map(e=>({x:(e.lng+180)/360,y:(e.lat+90)/180})),t=[50,25,12,6,3].map(e=>{let t=new Set;return r.forEach(r=>t.add(`${Math.floor(r.x*e)},${Math.floor(r.y*e)}`)),{r:1/e,N:t.size}});return FractalMath.regress(t.map(e=>Math.log10(1/e.r)),t.map(e=>Math.log10(e.N)))},calcDt:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.time.getTime()/36e5).sort((e,r)=>e-r),t=Math.min(r.length,200),n=r.slice(-t),a=(n[t-1]-n[0])/5;if(a<=0)return NaN;let l=[],o=[];for(let e=1;e<=8;e++){let c=a*(Math.pow(1.5,e)/25),u=0;for(let e=0;e<t;e++)for(let r=e+1;r<t;r++){if(n[r]-n[e]<c)u++;else break}u>0&&(o.push(Math.log10(c)),l.push(Math.log10(u/(t*(t-1)/2))))}return FractalMath.regress(o,l)},calcH:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.time.getTime()).sort((e,r)=>e-r),t=[];for(let e=1;e<r.length;e++)t.push(r[e]-r[e-1]);if(t.length<3)return NaN;let n=t.reduce((e,r)=>e+r,0)/t.length,a=t.map(e=>e-n),l=[],o=0;a.forEach(e=>{o+=e,l.push(o)});let c=Math.max(...l)-Math.min(...l),u=Math.sqrt(a.reduce((e,r)=>e+r*r,0)/a.length);return 0===u||0===c?.5:Math.max(0,Math.min(1,Math.log10(c/u)/Math.log10(t.length)))},calcMFDFA:e=>{let r=e.length;if(r<8)return NaN;let t=e.map(e=>e.time.getTime()).sort((e,r)=>e-r),n=[];for(let e=1;e<r;e++)n.push(t[e]-t[e-1]);let a=n.reduce((e,r)=>e+r,0)/n.length,l=[0],o=0;for(let e=0;e<n.length;e++)o+=n[e]-a,l.push(o);let c=[4,8,16,32],u=[-2,0,2],s={};if(c.forEach(e=>{if(e>n.length/4)return;let r=Math.floor(n.length/e),t=[];for(let a=0;a<r;a++){let r=a*e,t=l.slice(r,r+e),n=Array.from({length:e},((e,r)=>r)),o=n.reduce((e,r)=>e+r,0),c=t.reduce((e,r)=>e+r,0),u=n.reduce((e,r,n)=>e+r*t[n],0),s=n.reduce((e,r)=>e+r*r,0),f=e,i=(f*u-o*c)/(f*s-o*o),h=(c-i*o)/e,d=0;for(let e=0;e<f;e++)d+=Math.pow(t[e]-(i*e+h),2);t.push(d/e)}u.forEach(r=>{let n=0;if(0===r){let e=t.reduce((e,r)=>e+Math.log(Math.sqrt(r)),0);n=Math.exp(e/r)}else{let e=t.reduce((e,t)=>e+Math.pow(t,r/2),0);n=Math.pow(e/r,1/r)}s[r]||(s[r]={logS:[],logF:[]}),s[r].logS.push(Math.log10(e)),s[r].logF.push(Math.log10(n))})}),!s[2]||s[2].logS.length<2)return NaN;let f=[],i=[];if(u.forEach(e=>{let r=FractalMath.regress(s[e].logS,s[e].logF);f.push(e*r-1),i.push(e)}),0===i.length)return NaN;let h=[];for(let e=0;e<i.length-1;e++)h.push((f[e+1]-f[e])/(i[e+1]-i[e]));if(0===h.length)return NaN;let d=Math.max(...h)-Math.min(...h);return d<0?0:d},regress:(e,r)=>{let t=e.length;if(t<2)return 0;let n=e.reduce((e,r)=>e+r,0),a=r.reduce((e,r)=>e+r,0),l=e.reduce((e,t,n)=>e+t*r[n],0),o=e.reduce((e,r)=>e+r*r,0);return 0===t*o-n*n?0:(t*l-n*a)/(t*o-n*n)}};
+
+        
+
+        // --- 2. Z-Score STATS ENGINE ---
+        const StatsEngine = {
+            calculateDistribution: async (allZoneQuakes, windowDays, stepDays = 3) => {
+                const now = new Date();
+                const samples = { b:[], d0:[], dt:[], h:[], da:[] };
+                for (let i = windowDays * 2; i < BASELINE_DAYS; i += stepDays) {
+                    const end = new Date(now);
+                    end.setDate(now.getDate() - i);
+                    const start = new Date(end);
+                    start.setDate(end.getDate() - windowDays);
+                    const slice = allZoneQuakes.filter(q => q.time >= start && q.time < end);
+                    if (slice.length < 5) continue; 
+                    const b = FractalMath.calcB(slice);
+                    const d0 = FractalMath.calcD0(slice);
+                    const dt = FractalMath.calcDt(slice);
+                    const h = FractalMath.calcH(slice);
+                    const da = FractalMath.calcMFDFA(slice);
+                    if(!isNaN(b)) samples.b.push(b);
+                    if(!isNaN(d0)) samples.d0.push(d0);
+                    if(!isNaN(dt)) samples.dt.push(dt);
+                    if(!isNaN(h)) samples.h.push(h);
+                    if(!isNaN(da)) samples.da.push(da);
+                }
+                const getStats = (arr) => {
+                    if (arr.length < 3) return null;
+                    const mean = arr.reduce((a,b)=>a+b,0) / arr.length;
+                    const variance = arr.reduce((a,b)=>a + Math.pow(b-mean, 2), 0) / arr.length;
+                    return { mean, std: Math.sqrt(variance) };
+                };
+                return { b: getStats(samples.b), d0: getStats(samples.d0), dt: getStats(samples.dt), h: getStats(samples.h), da: getStats(samples.da) };
+            },
+            getZScore: (currentVal, stats) => {
+                if (!stats || stats.std === 0 || isNaN(currentVal)) return 0; 
+                return (currentVal - stats.mean) / stats.std;
+            },
+            calculateZSeries: async (allZoneQuakes, stats7, daysCount) => {
+                const out = [];
+                const now = new Date();
+                for (let k = daysCount - 1; k >= 0; k--) {
+                  const refDate = new Date(now);
+                  refDate.setDate(now.getDate() - k);
+
+                  const startDate = new Date(refDate);
+                  startDate.setDate(refDate.getDate() - 7);
+
+                  const slice = allZoneQuakes.filter(q => q.time >= startDate && q.time <= refDate); 
+
+                  const dayLabel = refDate.toLocaleDateString("en-US", {month:'numeric', day:'numeric'});
+                  const isoDate = refDate.toISOString().slice(0,10);
+
+                  const p = {
+                    b: FractalMath.calcB(slice),
+                    dt: FractalMath.calcDt(slice),
+                    da: FractalMath.calcMFDFA(slice),
+                    d0: FractalMath.calcD0(slice),
+                    h: FractalMath.calcH(slice),
+                  };
+
+                  out.push({
+                    day: dayLabel,
+                    iso: isoDate,
+                    raw: p,
+                    z: {
+                      b: StatsEngine.getZScore(p.b, stats7.b),
+                      dt: StatsEngine.getZScore(p.dt, stats7.dt),
+                      da: StatsEngine.getZScore(p.da, stats7.da),
+                      d0: StatsEngine.getZScore(p.d0, stats7.d0),
+                      h: StatsEngine.getZScore(p.h, stats7.h)
+                    }
+                  });
+                }
+                return out;
+            }
+        };
+
+        // --- 3. SYNC GUARD LOGIC (v4.2 New Feature) ---
+        function sgnEps(x, eps){ 
+            if (Math.abs(x) < eps) return 0; 
+            return x > 0 ? 1 : -1; 
+        }
+
+        function syncScore(vec, eps){
+            const arr = [vec.b, vec.dt, vec.da, vec.d0, vec.h];
+            const signs = arr.map(v => sgnEps(v, eps));
+            const valid = signs.filter(s => s !== 0).length;
+            if (valid < 3) return {S:0, dir:0, C:0, M:0, valid};
+            const sumS = signs.reduce((a,b)=>a+b,0);
+            const C = Math.abs(sumS) / valid;
+            const M = arr.filter(v => Math.abs(v)>=eps).reduce((a,b)=>a+Math.abs(b),0) / valid;
+            const dir = Math.sign(arr.reduce((a,b)=>a+b,0));
+            return {S:C*M, dir, C, M, valid};
+        }
+
+        function computeSyncGuard(z14, triggerCount){
+            const epsSlope = 0.05, epsDz = 0.10;
+            const slopeSeries = deriveDzSeriesFromZ14(z14, "slope7");
+            const d7Series = deriveDzSeriesFromZ14(z14, "dz7");
+            const d3Series = deriveDzSeriesFromZ14(z14, "dz3");
+            const d1Series = deriveDzSeriesFromZ14(z14, "dz1");
+            
+            const last = slopeSeries.length - 1; 
+
+            const s  = slopeSeries[last].v;
+            const d7 = d7Series[last].v;
+            const d3 = d3Series[last].v;
+            const d1 = d1Series[last].v;
+
+            const Ss  = syncScore(s,  epsSlope);
+            const S7  = syncScore(d7, epsDz);
+            const S3  = syncScore(d3, epsDz);
+            const S1  = syncScore(d1, epsDz);
+
+            const w = {s:0.45, d7:0.30, d3:0.15, d1:0.10};
+            const S = w.s*Ss.S + w.d7*S7.S + w.d3*S3.S + w.d1*S1.S;
+            const dir = Math.sign(w.s*Ss.dir + w.d7*S7.dir + w.d3*S3.dir + w.d1*S1.dir);
+
+            const gated = triggerCount >= 1; // Must have at least one Z-score alert to activate Guard
+            const T = 0.30;
+            const lock = gated && (dir < 0) && (S > T); // Pre-quake Sync Lock (Descent)
+            const release = gated && (dir > 0) && (S > T); // Post-quake Sync Release (Ascent)
+
+            return {S, dir, lock, release};
+        }
+
+        // --- 4. MAIN LOGIC ---
+        async function fetchData() {
+            const status = document.getElementById('loader-status');
+            const progress = document.getElementById('calc-progress');
+            const globalStatus = document.getElementById('global-status');
+            
+            const now = new Date();
+            const past = new Date();
+            past.setDate(now.getDate() - FETCH_DAYS);
+
+            try {
+                status.innerText = t('status_dl');
+                const res = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${past.toISOString()}&minmagnitude=4.0&orderby=time`);
+                const data = await res.json();
+                
+                allQuakes = data.features.map(f => ({
+                    lat: f.geometry.coordinates[1],
+                    lng: f.geometry.coordinates[0],
+                    depth: f.geometry.coordinates[2],
+                    mag: f.properties.mag,
+                    place: f.properties.place,
+                    url: f.properties.url,
+                    time: new Date(f.properties.time) 
+                }));
+
+                globalStatus.innerText = `ONLINE (${allQuakes.length} events)`;
+                globalStatus.classList.replace('text-slate-300', 'text-green-400');
+                world.pointsData(allQuakes);
+
+                status.innerText = t('status_init');
+                
+                // Initial Render with Default Tab
+                await renderCurrentTab();
+
+                setTimeout(() => {
+                    document.getElementById('loader').style.opacity = 0;
+                    setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+                    focusZone('global');
+                }, 500);
+
+            } catch (e) {
+                console.error(e);
+                status.innerText = "Error: " + e.message;
+                globalStatus.innerText = "OFFLINE";
+                globalStatus.classList.add('text-red-400');
+            }
+        }
+
+        async function processZone(zone, quakes) {
+            const container = document.getElementById('zone-list');
+            
+            const b90 = FractalMath.calcB(quakes) || 0;
+            const dt90 = FractalMath.calcDt(quakes) || 0;
+            const da90 = FractalMath.calcMFDFA(quakes) || 0;
+            const d090 = FractalMath.calcD0(quakes) || 0;
+            const h90 = FractalMath.calcH(quakes) || 0;
+
+            const stats7 = await StatsEngine.calculateDistribution(quakes, 7, 3);
+            const stats14 = await StatsEngine.calculateDistribution(quakes, 14, 3);
+            
+            const now = new Date();
+            const past7 = new Date(); past7.setDate(now.getDate() - 7);
+            const past14 = new Date(); past14.setDate(now.getDate() - 14);
+
+            const quakes7 = quakes.filter(q => q.time >= past7);
+            const quakes14 = quakes.filter(q => q.time >= past14);
+            
+            const p7 = { b: FractalMath.calcB(quakes7), dt: FractalMath.calcDt(quakes7), da: FractalMath.calcMFDFA(quakes7), d0: FractalMath.calcD0(quakes7), h: FractalMath.calcH(quakes7) };
+            const p14 = { b: FractalMath.calcB(quakes14), dt: FractalMath.calcDt(quakes14), da: FractalMath.calcMFDFA(quakes14), d0: FractalMath.calcD0(quakes14), h: FractalMath.calcH(quakes14) };
+
+            const z7 = {
+                b: StatsEngine.getZScore(p7.b, stats7.b), dt: StatsEngine.getZScore(p7.dt, stats7.dt), da: StatsEngine.getZScore(p7.da, stats7.da),
+                d0: StatsEngine.getZScore(p7.d0, stats7.d0), h: StatsEngine.getZScore(p7.h, stats7.h)
+            };
+            const z14 = {
+                b: StatsEngine.getZScore(p14.b, stats14.b), dt: StatsEngine.getZScore(p14.dt, stats14.dt), da: StatsEngine.getZScore(p14.da, stats14.da),
+                d0: StatsEngine.getZScore(p14.d0, stats14.d0), h: StatsEngine.getZScore(p14.h, stats14.h)
+            };
+
+            const zSeries14 = await StatsEngine.calculateZSeries(quakes, stats7, 14);
+            const zSeries7 = zSeries14.slice(7); 
+            
+            const dz7Mini = {
+                b:  (zSeries14[13].z.b  - zSeries14[6].z.b),
+                dt: (zSeries14[13].z.dt - zSeries14[6].z.dt),
+                da: (zSeries14[13].z.da - zSeries14[6].z.da),
+                d0: (zSeries14[13].z.d0 - zSeries14[6].z.d0),
+                h:  (zSeries14[13].z.h  - zSeries14[6].z.h)
+            };
+
+            const activeParams = ['b', 'Dt', 'Δα'];
+            const zItems = [
+                { name: 'b', val: z7.b }, { name: 'Dt', val: z7.dt }, { name: 'Δα', val: z7.da }, { name: 'D₀', val: z7.d0 }, { name: 'H', val: z7.h },
+                { name: 'b', val: z14.b }, { name: 'Dt', val: z14.dt }, { name: 'Δα', val: z14.da }, { name: 'D₀', val: z14.d0 }, { name: 'H', val: z14.h }
+            ];
+            
+            // Standard Alert: Keep |Z|>2.0 for Global Scale to avoid noise
+            const triggers = zItems.filter(item => activeParams.includes(item.name) && Math.abs(item.val) > 2.0);
+            const count = triggers.length;
+            const triggerNames = [...new Set(triggers.map(t => t.name))]; 
+
+            // Sync Guard Calculation
+            const syncResult = computeSyncGuard(zSeries14, count);
+
+            let alertClass = "border-l-slate-600";
+            let alertNoteText = t('normal');
+            let alertNoteClass = "text-slate-400 border-slate-800 bg-slate-950/20";
+
+            if (count >= 3) {
+                alertClass = "alert-3 border-l-red-600";
+                alertNoteClass = "text-red-100 border-red-700/80 bg-red-900/40";
+                alertNoteText = `${t('alert3')}: ${triggerNames.join(", ")} (${count})`;
+            } else if (count >= 2) {
+                alertClass = "alert-2 border-l-red-500";
+                alertNoteClass = "text-red-200 border-red-800/70 bg-red-900/25";
+                alertNoteText = `${t('alert2')}: ${triggerNames.join(", ")} (${count})`;
+            } else if (count >= 1) {
+                alertClass = "alert-1 border-l-red-400";
+                alertNoteClass = "text-red-300 border-red-900/60 bg-red-900/15";
+                alertNoteText = `${t('alert1')}: ${triggerNames.join(", ")} (${count})`;
+            }
+
+            // Sync Lock Visual Override
+            if (syncResult.lock) alertClass += " sync-lock-border";
+
+            const dzB  = formatDz(dz7Mini.b);
+            const dzDt = formatDz(dz7Mini.dt);
+            const dzDa = formatDz(dz7Mini.da);
+            const dzD0 = formatDz(dz7Mini.d0);
+            const dzH  = formatDz(dz7Mini.h);
+
+            // Create Card HTML (v4.2 Layout)
+            const div = document.createElement('div');
+            div.className = `zone-card rounded-lg border-l-4 ${alertClass} mb-2`;
+            div.id = `card-${zone.id}`;
+            const zoneName = currentLang === 'zh' ? zone.name : zone.nameEn;
+
+            let syncGuardHTML = "";
+            if (syncResult.lock) {
+                const lockText = currentLang === "zh" 
+                    ? `⚠️ SYNC LOCK: 參數同步閉鎖 (S=${syncResult.S.toFixed(2)})`
+                    : `⚠️ SYNC LOCK: Pre-quake Descent (S=${syncResult.S.toFixed(2)})`;
+                syncGuardHTML = `<div class="sync-box sync-lock-alert"><span>${lockText}</span><span>↘</span></div>`;
+            } else if (syncResult.release) {
+                const relText = currentLang === "zh"
+                    ? `⚡ SYNC RELEASE: 快速釋放 (S=${syncResult.S.toFixed(2)})`
+                    : `⚡ SYNC RELEASE: Rapid Ascent (S=${syncResult.S.toFixed(2)})`;
+                syncGuardHTML = `<div class="sync-box sync-release-alert"><span>${relText}</span><span>↗</span></div>`;
+            }
+
+            div.innerHTML = `
+                <button class="close-btn" onclick="removeCard(this, event, '${zone.id}')">×</button>
+                <div class="flex flex-col mb-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <div class="drag-handle"><svg width="10" height="16" viewBox="0 0 6 10" fill="currentColor"><circle cx="2" cy="2" r="1"/><circle cx="5" cy="2" r="1"/><circle cx="2" cy="5" r="1"/><circle cx="5" cy="5" r="1"/><circle cx="2" cy="8" r="1"/><circle cx="5" cy="8" r="1"/></svg></div>
+                        <div class="font-bold text-slate-200 text-xs md:text-sm flex-1 truncate pr-6">${zoneName}</div>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 pl-4">
+                         <div class="text-[9px] text-slate-400 font-mono">Count: ${quakes.length} (7d:${quakes7.length})</div>
+                         <button class="btn-ztrend text-[9px] bg-slate-700 hover:bg-slate-600 text-cyan-300 px-1.5 py-0.5 rounded border border-slate-600 transition flex items-center gap-1 ml-auto">
+                            ${t('trend')}
+                         </button>
+                         <button class="btn-dztrend text-[9px] bg-slate-800 hover:bg-slate-700 text-pink-300 px-1.5 py-0.5 rounded border border-slate-600 transition flex items-center gap-1">
+                            ${t('dz_trend')}
+                         </button>
+                    </div>
+                </div>
+
+                ${quakes14.length < 3 ? `<div class="text-xs text-slate-500 text-center py-2">Insufficient Data (<3)</div>` : `
+                <div class="p-1 rounded bg-slate-900/40 border border-slate-800">
+                    <div class="param-grid mb-1 opacity-70">
+                        <span class="col-head"></span><span class="col-head text-center">BG</span><span class="col-head text-center">7Z</span><span class="col-head text-center">14Z</span><span class="col-head text-center">ΔZ7</span>
+                    </div>
+                    <div class="param-grid">
+                        <div class="param-row"><span class="text-cyan-400 font-bold p-label-text text-center">b</span><span class="text-center text-slate-400 p-val-text">${safeFormat(b90)}</span><div class="text-center">${renderZ(z7.b)}</div><div class="text-center">${renderZ(z14.b)}</div><span class="text-center dz-val ${dzB.cls}">${dzB.txt}</span></div>
+                        <div class="param-row"><span class="text-yellow-400 font-bold p-label-text text-center">Dt</span><span class="text-center text-slate-400 p-val-text">${safeFormat(dt90)}</span><div class="text-center">${renderZ(z7.dt)}</div><div class="text-center">${renderZ(z14.dt)}</div><span class="text-center dz-val ${dzDt.cls}">${dzDt.txt}</span></div>
+                        <div class="param-row"><span class="text-fuchsia-400 font-bold p-label-text text-center">Δα</span><span class="text-center text-slate-400 p-val-text">${safeFormat(da90)}</span><div class="text-center">${renderZ(z7.da)}</div><div class="text-center">${renderZ(z14.da)}</div><span class="text-center dz-val ${dzDa.cls}">${dzDa.txt}</span></div>
+                        <div class="param-row opacity-60"><span class="text-purple-300 p-label-text text-center">D₀</span><span class="text-center text-slate-500 p-val-text">${safeFormat(d090)}</span><div class="text-center">${renderZ(z7.d0)}</div><div class="text-center">${renderZ(z14.d0)}</div><span class="text-center dz-val ${dzD0.cls}">${dzD0.txt}</span></div>
+                        <div class="param-row opacity-60"><span class="text-pink-300 p-label-text text-center">H</span><span class="text-center text-slate-500 p-val-text">${safeFormat(h90)}</span><div class="text-center">${renderZ(z7.h)}</div><div class="text-center">${renderZ(z14.h)}</div><span class="text-center dz-val ${dzH.cls}">${dzH.txt}</span></div>
+                    </div>
+                    
+                    <div class="mt-1 text-[9px] leading-tight font-mono border rounded px-1 py-0.5 text-center ${alertNoteClass}">${alertNoteText}</div>
+                    ${syncGuardHTML}
+                </div>
+                `}
+            `;
+            container.appendChild(div);
+
+            const btnZ = div.querySelector('.btn-ztrend');
+            if(btnZ) btnZ.onclick = (e) => { e.stopPropagation(); openChartModalZ(zoneName, zSeries7); };
+
+            const btnDz = div.querySelector('.btn-dztrend');
+            if(btnDz) btnDz.onclick = (e) => { e.stopPropagation(); openChartModalDZ(zoneName, zSeries14); };
+
+            div.onclick = (e) => {
+                if (!e.target.closest('.close-btn') && !e.target.closest('.drag-handle') && !e.target.closest('button')) focusZone(zone.id);
+            };
+        }
+
+        const renderZ = (val) => {
+            if (val === null || isNaN(val)) return `<span class="z-badge z-na">N/A</span>`;
+            const v = val.toFixed(1);
+            let cls = 'z-normal';
+            // Using 2.0 to match Global's stricter rule, but visual warn low/high still applies
+            if (Math.abs(val) > 2.0) cls = val > 0 ? 'z-warn-high' : 'z-warn-low';
+            return `<span class="z-badge ${cls}">${val>0?'+':''}${v}</span>`;
+        };
+
+        // --- CHART LOGIC ---
+        function deriveDzSeriesFromZ14(z14, mode) {
+          const last7 = z14.slice(7);
+          const out = [];
+
+          const zb  = z14.map(d => d.z.b);
+          const zdt = z14.map(d => d.z.dt);
+          const zda = z14.map(d => d.z.da);
+          const zd0 = z14.map(d => d.z.d0);
+          const zh  = z14.map(d => d.z.h);
+
+          const makeDelta = (arr, k, idx) => clamp(arr[idx] - arr[idx - k], DZ_CLAMP_MIN, DZ_CLAMP_MAX);
+
+          if (mode === "dz1" || mode === "dz3" || mode === "dz7") {
+            const k = mode === "dz1" ? 1 : (mode === "dz3" ? 3 : 7);
+            for (let i = 7; i <= 13; i++) {
+              out.push({
+                day: z14[i].day,
+                iso: z14[i].iso,
+                v: {
+                  b:  makeDelta(zb,  k, i),
+                  dt: makeDelta(zdt, k, i),
+                  da: makeDelta(zda, k, i),
+                  d0: makeDelta(zd0, k, i),
+                  h:  makeDelta(zh,  k, i)
+                }
+              });
+            }
+            return out;
+          }
+
+          if (mode === "slope7") {
+            const xs = [0,1,2,3,4,5,6];
+            const slopeAt = (arr, endIdx) => {
+              const ys = [];
+              for (let j = endIdx - 6; j <= endIdx; j++) ys.push(arr[j]);
+              const s = linregSlope(xs, ys);
+              return clamp(s, DZ_CLAMP_MIN, DZ_CLAMP_MAX);
+            };
+
+            for (let i = 7; i <= 13; i++) {
+              out.push({
+                day: z14[i].day,
+                iso: z14[i].iso,
+                v: {
+                  b:  slopeAt(zb,  i),
+                  dt: slopeAt(zdt, i),
+                  da: slopeAt(zda, i),
+                  d0: slopeAt(zd0, i),
+                  h:  slopeAt(zh,  i)
+                }
+              });
+            }
+            return out;
+          }
+          return [];
+        }
+
+        function openChartModalZ(zoneName, zSeries7) {
+            chartState.type = "Z";
+            chartState.zoneName = zoneName;
+            chartState.z7Series_7days = zSeries7;
+            chartState.z7Series_14days = null;
+            chartState.dzSeries_7days = null;
+
+            document.getElementById("dz-mode-bar").classList.add("hidden");
+            const modal = document.getElementById("chart-modal");
+            document.getElementById("chart-title").innerHTML = `<span class="text-cyan-400">📈</span> ${t('chart_title')} - ${zoneName}`;
+            modal.classList.remove("hidden");
+            renderChartZ(zSeries7);
+        }
+
+        function openChartModalDZ(zoneName, zSeries14) {
+            chartState.type = "DZ";
+            chartState.zoneName = zoneName;
+            chartState.z7Series_14days = zSeries14;
+            chartState.z7Series_7days = null;
+            chartState.dzMode = "slope7";
+
+            document.getElementById("dz-mode-bar").classList.remove("hidden");
+            const modal = document.getElementById("chart-modal");
+            document.getElementById("chart-title").innerHTML = `<span class="text-pink-300">📈</span> ${t('chart_title_dz')} - ${zoneName}`;
+            modal.classList.remove("hidden");
+
+            chartState.dzSeries_7days = deriveDzSeriesFromZ14(zSeries14, chartState.dzMode);
+            syncDzModeButtons();
+            renderChartDZ(chartState.dzSeries_7days, chartState.dzMode);
+        }
+
+        function syncDzModeButtons() {
+            const modes = ["slope7","dz7","dz3","dz1"];
+            modes.forEach(m => {
+                const el = document.getElementById(`mode-${m}`);
+                if (el) el.classList.toggle("active", chartState.dzMode === m);
+            });
+        }
+
+        function setDzMode(mode) {
+            if (chartState.type !== "DZ") return;
+            chartState.dzMode = mode;
+            syncDzModeButtons();
+            chartState.dzSeries_7days = deriveDzSeriesFromZ14(chartState.z7Series_14days, chartState.dzMode);
+            renderChartDZ(chartState.dzSeries_7days, chartState.dzMode);
+        }
+
+        function renderChartZ(series) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            const labels = series.map(d => d.day);
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'b (Z)',   data: series.map(d => d.z.b),  borderColor: '#22d3ee', backgroundColor: '#22d3ee', tension: 0.3, borderWidth: 2, pointRadius: 3, spanGaps: true },
+                        { label: 'Dt (Z)',  data: series.map(d => d.z.dt), borderColor: '#facc15', backgroundColor: '#facc15', tension: 0.3, borderWidth: 2, pointRadius: 3, spanGaps: true },
+                        { label: 'Δα (Z)',  data: series.map(d => d.z.da), borderColor: '#e879f9', backgroundColor: '#e879f9', tension: 0.3, borderWidth: 2, pointRadius: 3, spanGaps: true },
+                        { label: 'D₀ (Z)',  data: series.map(d => d.z.d0), borderColor: '#c084fc', backgroundColor: '#c084fc', tension: 0.3, borderWidth: 1, pointRadius: 2, borderDash: [5, 5], spanGaps: true },
+                        { label: 'H (Z)',   data: series.map(d => d.z.h),  borderColor: '#f9a8d4', backgroundColor: '#f9a8d4', tension: 0.3, borderWidth: 1, pointRadius: 2, borderDash: [5, 5], spanGaps: true }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Z-Score', color: '#64748b' } },
+                        x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: { legend: { labels: { color: '#cbd5e1', font: {family: 'Roboto Mono'} } } }
+                }
+            });
+        }
+
+        function renderChartDZ(series, mode) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            const labels = series.map(d => d.day);
+            const suffix = (mode === "slope7") ? "Slope7" : (mode === "dz7" ? "ΔZ7" : (mode === "dz3" ? "ΔZ3" : "ΔZ1"));
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: `b ${suffix}`,   data: series.map(d => d.v.b),  borderColor: '#22d3ee', backgroundColor: '#22d3ee', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+                        { label: `Dt ${suffix}`,  data: series.map(d => d.v.dt), borderColor: '#facc15', backgroundColor: '#facc15', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+                        { label: `Δα ${suffix}`,  data: series.map(d => d.v.da), borderColor: '#e879f9', backgroundColor: '#e879f9', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+                        { label: `D₀ ${suffix}`,  data: series.map(d => d.v.d0), borderColor: '#c084fc', backgroundColor: '#c084fc', tension: 0.3, borderWidth: 1, pointRadius: 2, borderDash: [5, 5] },
+                        { label: `H ${suffix}`,   data: series.map(d => d.v.h),  borderColor: '#f9a8d4', backgroundColor: '#f9a8d4', tension: 0.3, borderWidth: 1, pointRadius: 2, borderDash: [5, 5] }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' }, title: { display: true, text: `${suffix} (clamp -3..+3)`, color: '#64748b' } },
+                        x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: { legend: { labels: { color: '#cbd5e1', font: {family: 'Roboto Mono'} } } }
+                }
+            });
+        }
+
+        function closeChartModal() { document.getElementById("chart-modal").classList.add("hidden"); }
+
+        // --- Donate Modal Logic ---
+        function openDonateModal() {
+            document.getElementById("donate-modal").classList.remove("hidden");
+        }
+        
+        function closeDonateModal() {
+            document.getElementById("donate-modal").classList.add("hidden");
+        }
+        
+        function copyAddress() {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(DONATE_ADDR).then(() => {
+                    showCopyTooltip();
+                }).catch(err => {
+                    console.error('Async: Could not copy text: ', err);
+                    prompt("Copy Address:", DONATE_ADDR);
+                });
+            } else {
+                prompt("Copy Address:", DONATE_ADDR);
+            }
+        }
+        
+        function showCopyTooltip() {
+            const el = document.getElementById("copy-tooltip");
+            el.classList.add("show");
+            setTimeout(() => {
+                el.classList.remove("show");
+            }, 2000);
+        }
+
+        // --- Draggable Logic for Chart Modal ---
+        (function initDraggable() {
+            const dragHandle = document.getElementById("chart-drag-handle");
+            const modalContent = document.getElementById("chart-modal-content");
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            if (!dragHandle || !modalContent) return;
+
+            dragHandle.addEventListener("mousedown", (e) => {
+                if(e.target.closest("button")) return;
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = modalContent.getBoundingClientRect();
+                initialLeft = rect.left;
+                initialTop = rect.top;
+                modalContent.style.left = initialLeft + "px";
+                modalContent.style.top = initialTop + "px";
+                modalContent.style.margin = "0"; 
+                document.body.style.userSelect = "none";
+            });
+
+            dragHandle.addEventListener("touchstart", (e) => {
+                if(e.target.closest("button")) return;
+                const touch = e.touches[0];
+                isDragging = true;
+                startX = touch.clientX;
+                startY = touch.clientY;
+                const rect = modalContent.getBoundingClientRect();
+                initialLeft = rect.left;
+                initialTop = rect.top;
+                modalContent.style.left = initialLeft + "px";
+                modalContent.style.top = initialTop + "px";
+                modalContent.style.margin = "0";
+            }, {passive: false});
+
+            document.addEventListener("mousemove", (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                modalContent.style.left = (initialLeft + dx) + "px";
+                modalContent.style.top = (initialTop + dy) + "px";
+            });
+
+            document.addEventListener("touchmove", (e) => {
+                if (!isDragging) return;
+                const touch = e.touches[0];
+                const dx = touch.clientX - startX;
+                const dy = touch.clientY - startY;
+                e.preventDefault(); 
+                modalContent.style.left = (initialLeft + dx) + "px";
+                modalContent.style.top = (initialTop + dy) + "px";
+            }, {passive: false});
+
+            const stopDrag = () => {
+                if (isDragging) {
+                    isDragging = false;
+                    document.body.style.userSelect = "";
+                }
+            };
+
+            document.addEventListener("mouseup", stopDrag);
+            document.addEventListener("touchend", stopDrag);
+        })();
+
+        function exportPNG() {
+            if(!chartInstance) return;
+            const a = document.createElement('a');
+            a.href = chartInstance.toBase64Image();
+            const modeSuffix = chartState.type === "DZ" ? `_${chartState.dzMode}` : "_Z";
+            a.download = `global_fractal_trend${modeSuffix}.png`;
+            a.click();
+        }
+
+        function exportCSV() {
+            if(!chartState.zoneName) return;
+            
+            if (chartState.type === "Z") {
+                const series = chartState.z7Series_7days;
+                let csv = "Date,b_raw,b_z,dt_raw,dt_z,da_raw,da_z,d0_raw,d0_z,h_raw,h_z\n";
+                series.forEach(row => {
+                    csv += `${row.day},${safeFormat(row.raw.b)},${safeFormat(row.z.b)},${safeFormat(row.raw.dt)},${safeFormat(row.z.dt)},${safeFormat(row.raw.da)},${safeFormat(row.z.da)},${safeFormat(row.raw.d0)},${safeFormat(row.z.d0)},${safeFormat(row.raw.h)},${safeFormat(row.z.h)}\n`;
+                });
+                downloadBlob(csv, "global_ztrend_7days.csv");
+            } else {
+                const series = chartState.dzSeries_7days;
+                let csv = `Date,Mode,b,dt,da,d0,h\n`;
+                series.forEach(row => {
+                    csv += `${row.day},${chartState.dzMode},${safeFormat(row.v.b)},${safeFormat(row.v.dt)},${safeFormat(row.v.da)},${safeFormat(row.v.d0)},${safeFormat(row.v.h)}\n`;
+                });
+                downloadBlob(csv, `global_dztrend_${chartState.dzMode}.csv`);
+            }
+        }
+
+        function downloadBlob(content, filename) {
+            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- Other Utils ---
+        function focusZone(id) {
+            document.querySelectorAll('.zone-card').forEach(c => c.classList.remove('active'));
+            const card = document.getElementById(`card-${id}`);
+            if(card) {
+                card.classList.add('active');
+                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            const activeList = getActiveZones();
+            const zone = activeList.find(z => z.id === id);
+            if (zone) world.pointOfView({ lat: zone.center.lat, lng: zone.center.lng, altitude: zone.center.alt }, 1500);
+        }
+
+        function removeCard(btn, event, zoneId) {
+            event.stopPropagation();
+            const card = btn.closest('.zone-card');
+            card.style.display = 'none';
+            hiddenZones.add(zoneId);
+            updateRestoreButton();
+        }
+
+        function restoreHiddenZoneCards() {
+            hiddenZones.forEach(id => {
+                const card = document.getElementById(`card-${id}`);
+                if(card) card.style.display = 'block';
+            });
+            hiddenZones.clear();
+            updateRestoreButton();
+        }
+
+        function updateRestoreButton() {
+            const btn = document.getElementById('btn-restore');
+            const lbl = document.getElementById('lbl-restore');
+            if (hiddenZones.size > 0) {
+                btn.classList.remove('hidden');
+                lbl.innerText = `${t('restore')} (${hiddenZones.size})`;
+            } else {
+                btn.classList.add('hidden');
+            }
+        }
+
+        function resetLayout() {
+            hiddenZones.clear();
+            updateRestoreButton();
+            document.getElementById('zone-list').innerHTML = '';
+            // Reset to default tab if needed, or just refresh current
+            fetchData(); 
+        }
+
+        function handleHover(quake) {
+            const hud = document.getElementById('quake-hud');
+            if (quake) {
+                document.body.style.cursor = 'pointer';
+                hud.classList.remove('hidden');
+                document.getElementById('hud-place').innerText = quake.place;
+                document.getElementById('hud-mag').innerText = quake.mag.toFixed(1);
+                document.getElementById('hud-mag').style.color = colors.mag(quake.mag);
+                document.getElementById('hud-depth').innerText = quake.depth + ' km';
+                document.getElementById('hud-time').innerText = quake.time.toLocaleString();
+            } else {
+                document.body.style.cursor = 'default';
+                hud.classList.add('hidden');
+            }
+        }
+
+        function handleClick(quake) {
+            if(!quake) return;
+            handleHover(quake);
+            const hud = document.getElementById('quake-hud');
+            hud.classList.remove('hidden');
+            hud.style.opacity = 1;
+            if(quake.url) window.open(quake.url, '_blank');
+        }
+
+        function startGpsClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('gps-date').innerText = now.toISOString().split('T')[0];
+                document.getElementById('gps-time').innerText = now.toTimeString().split(' ')[0];
+            }, 1000);
+        }
+
+        function init() {
+            applyStaticTexts();
+            startGpsClock();
+            
+            const el = document.getElementById('zone-list');
+            sortableInstance = Sortable.create(el, { animation: 150, handle: '.drag-handle', ghostClass: 'sortable-ghost', dragClass: 'sortable-drag' });
+
+            world = Globe()(document.getElementById('globeViz'))
+                .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+                .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+                .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
+                .atmosphereColor('rgb(100, 40, 255)')
+                .atmosphereAltitude(0.15)
+                .pointLat('lat')
+                .pointLng('lng')
+                .pointColor(d => colors.mag(d.mag))
+                .pointAltitude(d => 0.01 + (d.mag - 4) * 0.05)
+                .pointRadius(d => 0.2 + (d.mag - 4) * 0.3)
+                .pointsMerge(false)
+                .onPointHover(handleHover)
+                .onPointClick(handleClick);
+
+            world.controls().autoRotate = true;
+            world.controls().autoRotateSpeed = 0.5;
+
+            window.addEventListener('resize', () => {
+                if(world) world.width(window.innerWidth).height(window.innerHeight);
+            });
+
+            fetchData();
+        }
+
+        init();
+    </script>
+</body>
+</html>
