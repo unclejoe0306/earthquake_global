@@ -39,11 +39,11 @@ You can download the latest Android APK from the **[Releases Page](../../release
 2.  Allow installation from unknown sources in your Android settings.
 3.  Launch the app (Internet connection required).
 
-## 📊 
+## 📊 Methodology
 
 This software implements a sliding window approach (7-day & 14-day) to compute fractal dimensions. Anomalies are flagged when parameters deviate significantly ($|Z| > 2.0$) from the background noise level.
 
-## ☕ Support 📊 Methodology
+## ☕ Support 
 
 This is an independent research project. If you find it useful, consider supporting its development.
 1. BuyMeACoffee https://buymeacoffee.com/unclejoe038
