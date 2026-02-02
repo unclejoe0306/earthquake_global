@@ -77,6 +77,6 @@ If you use this software in your research, please cite it as follows:
   year         = {2026},
   publisher    = {Zenodo},
   doi          = {10.5281/zenodo.18449555},
-  url          = {[https://doi.org/10.5281/zenodo.18284864](https://doi.org/10.5281/zenodo.18449555)}
+  url          = {[https://doi.org/10.5281/zenodo.18449555](https://doi.org/10.5281/zenodo.18449555)}
 }
 
