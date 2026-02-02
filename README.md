@@ -1,6 +1,6 @@
 # Global Seismic Fractal Analysis War Room PRO
 
-[![DOI](https://zenodo.org/badge/DOI/18449555.svg)](https://doi.org/10.5281/zenodo.18449555)
+[![DOI](https://zenodo.org/badge/DOI/18284864.svg)](https://doi.org/10.5281/zenodo.18284864)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Web-green)](https://github.com/)
 
@@ -66,7 +66,7 @@ Copyright © 2026 Yu-Ching Chou. Licensed under the MIT License.
 If you use this software in your research, please cite it as follows:
 
 **APA Format:**
-> Chou, Y.-C. (2026). Global Seismic Fractal Analysis War Room PRO (Version 4.2.5) [Software]. Zenodo. https://doi.org/10.5281/zenodo.18449555
+> Chou, Y.-C. (2026). Global Seismic Fractal Analysis War Room PRO (Version 4.2.5) [Software]. Zenodo. https://doi.org/10.5281/zenodo.18284864
 
 **BibTeX:**
 ```bibtex
@@ -76,7 +76,7 @@ If you use this software in your research, please cite it as follows:
   version      = {4.2.5},
   year         = {2026},
   publisher    = {Zenodo},
-  doi          = {10.5281/zenodo.18449555},
-  url          = {[https://doi.org/10.5281/zenodo.18449555](https://doi.org/10.5281/zenodo.18449555)}
+  doi          = {10.5281/zenodo.18284864},
+  url          = {[https://doi.org/10.5281/zenodo.18284864](https://doi.org/10.5281/zenodo.18284864)}
 }
 
