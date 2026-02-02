@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Seismic Fractal Analysis War Room PRO v4.2.2</title>
+    <title>Global Seismic Fractal War Room PRO v4.2.5 (3/7 Day Model)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <script src="https://unpkg.com/d3@7"></script>
@@ -60,22 +60,30 @@
             box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
         }
 
-        /* Alert Levels */
+        /* Alert Levels (3-Day Sensitive Model) */
         .zone-card.alert-1 {
-            border-color: rgba(248, 113, 113, 0.9);
-            background: rgba(127, 29, 29, 0.28);
-            box-shadow: 0 0 18px rgba(248, 113, 113, 0.15);
+            border-color: rgba(251, 146, 60, 0.8); /* Orange for Level 1 */
+            background: rgba(124, 45, 18, 0.25);
+            box-shadow: 0 0 15px rgba(251, 146, 60, 0.1);
         }
         .zone-card.alert-2 {
-            border-color: rgba(239, 68, 68, 0.95);
-            background: rgba(127, 29, 29, 0.42);
-            box-shadow: 0 0 22px rgba(239, 68, 68, 0.22);
+            border-color: rgba(239, 68, 68, 0.9);
+            background: rgba(127, 29, 29, 0.35);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
         }
         .zone-card.alert-3 {
             border-color: rgba(220, 38, 38, 1);
-            background: rgba(127, 29, 29, 0.58);
-            box-shadow: 0 0 28px rgba(220, 38, 38, 0.3);
+            background: rgba(127, 29, 29, 0.6);
+            box-shadow: 0 0 30px rgba(220, 38, 38, 0.4);
+            animation: pulse-border 2s infinite;
         }
+        
+        @keyframes pulse-border {
+            0% { border-right-color: rgba(220, 38, 38, 1); }
+            50% { border-right-color: rgba(220, 38, 38, 0.3); }
+            100% { border-right-color: rgba(220, 38, 38, 1); }
+        }
+
         /* Sync Guard Highlight */
         .zone-card.sync-lock-border {
             border-right: 4px solid #facc15; 
@@ -107,7 +115,7 @@
             pointer-events: none;
         }
 
-        /* Z-Score Badge Styles */
+        /* Z-Score Badge Styles (Threshold > 1.5) */
         .z-badge {
             font-size: 8px;
             padding: 1px 0px;
@@ -123,10 +131,10 @@
         .z-warn-high { color: #f472b6; background: rgba(244, 114, 182, 0.2); border: 1px solid rgba(244, 114, 182, 0.3); font-weight: bold; }
         .z-na { color: #475569; border: 1px dashed #475569; }
         
-        /* Param Grid - 5 Columns Layout (Optimized v4.2) */
+        /* Param Grid - 5 Columns Layout */
         .param-grid { 
             display: grid; 
-            grid-template-columns: 24px 1fr 1fr 1fr 1fr; /* Label, BG, 7Z, 14Z, dZ */
+            grid-template-columns: 24px 1fr 1fr 1fr 1fr; /* Label, BG, 3Z, 7Z, dZ */
             gap: 2px; 
             align-items: center; 
         }
@@ -170,7 +178,7 @@
             color: #f9a8d4;
         }
 
-        /* Chart Modal - Draggable Setup */
+        /* Chart Modal */
         #chart-modal, #donate-modal {
             z-index: 10000;
             position: fixed;
@@ -198,7 +206,6 @@
             position: absolute; 
         }
         
-        /* Donate Modal Content */
         #donate-modal-content {
             pointer-events: auto;
             background-color: rgba(15, 23, 42, 0.98);
@@ -302,8 +309,8 @@
 
     <div id="loader" class="fixed inset-0 bg-[#020617] z-[9999] flex flex-col items-center justify-center text-white transition-opacity duration-500">
         <div class="w-16 h-16 border-4 border-slate-700 border-t-cyan-500 rounded-full animate-spin mb-4"></div>
-        <div class="text-xl font-bold tracking-[0.2em] text-cyan-400 mb-2">GLOBAL FRACTAL PRO V4.2.2</div>
-        <div id="loader-status" class="text-sm text-slate-400 font-mono">系統初始化中...</div>
+        <div class="text-xl font-bold tracking-[0.2em] text-cyan-400 mb-2">GLOBAL FRACTAL PRO V4.2.5</div>
+        <div id="loader-status" class="text-sm text-slate-400 font-mono">初始化: 3/7日雙重模型 (High Sensitivity)...</div>
         <div id="calc-progress" class="text-xs text-slate-500 font-mono mt-2 w-64 text-center"></div>
     </div>
 
@@ -321,7 +328,7 @@
                 <div class="flex-1 min-w-0 pt-0.5">
                     <h1 class="text-base md:text-lg font-bold text-white flex items-center gap-2 leading-tight">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2"><path d="M2 12h2l3 9 4-18 4 18 3-9h2"/></svg>
-                        <span id="header-title">全球強震碎形戰情室 PRO v4.2.2</span> 
+                        <span id="header-title">全球強震碎形戰情室 PRO v4.2.5</span> 
                     </h1>
                 </div>
 
@@ -354,10 +361,10 @@
                 </div>
             </div>
             
-            <p id="header-subtitle" class="text-[9px] text-slate-400 font-mono hidden md:block">Monitor: 5-Param Z-Score + ΔZ Trend Suite & Sync Lock</p>
+            <p id="header-subtitle" class="text-[9px] text-slate-400 font-mono hidden md:block">Monitor: 3/7-Day 5-Param Z-Score (Lower Thresh) & Sync Lock</p>
             
             <div class="mt-1 pt-1 border-t border-slate-700/50 flex justify-start">
-                 <p id="copyright-text" class="text-[9px] text-slate-500">版權所有 © 2025 周裕清</p>
+                 <p id="copyright-text" class="text-[9px] text-slate-500">版權所有 © 2026 周裕清</p>
             </div>
 
             <div class="mt-2 flex items-center justify-start gap-2 pointer-events-auto">
@@ -373,8 +380,8 @@
         <div id="zone-list" class="rounded-xl flex-1 overflow-y-auto custom-scroll pointer-events-auto min-h-0 pb-4 grid grid-cols-2 md:flex md:flex-col gap-2"></div>
 
         <div class="glass-panel p-2 rounded-xl pointer-events-auto shrink-0 text-[9px] text-slate-400 grid grid-cols-2 gap-1 shadow-xl mb-4 md:mb-0">
-            <div id="legend-rule"><span class="text-white font-bold">警戒規則:</span> |Z| &gt; 2.0 (前3參)</div>
-            <div id="legend-lv1"><span class="text-red-400 font-bold">輕度:</span> 任 1 個異常</div>
+            <div id="legend-rule"><span class="text-white font-bold">警戒規則:</span> |Z| &gt; 1.5 (3Z/7Z共10參)</div>
+            <div id="legend-lv1"><span class="text-orange-400 font-bold">輕度:</span> 任 1 個異常</div>
             <div id="legend-lv2"><span class="text-red-500 font-bold">中度:</span> 任 2 個異常</div>
             <div id="legend-lv3"><span class="text-red-600 font-bold">高度:</span> 3 個以上異常</div>
             <div id="legend-sync" class="col-span-2 text-slate-500 border-t border-slate-700/50 pt-1 mt-1">
@@ -435,7 +442,7 @@
                 
                 <div class="flex justify-end gap-2 mt-3 pt-2 border-t border-slate-800">
                     <button onclick="exportCSV()" class="text-[10px] bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 px-3 py-1.5 rounded border border-emerald-700/50 flex items-center gap-1 transition">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                         <span id="btn-csv">CSV</span>
                     </button>
                     <button onclick="exportPNG()" class="text-[10px] bg-cyan-900/80 hover:bg-cyan-800 text-cyan-200 px-3 py-1.5 rounded border border-cyan-700/50 flex items-center gap-1 transition">
@@ -453,31 +460,45 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
             
-            <div class="flex justify-center mb-4">
-                <div class="bg-pink-500/10 p-4 rounded-full border border-pink-500/30">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="#f472b6"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            <div class="flex justify-center mb-3">
+                <div class="bg-pink-500/10 p-3 rounded-full border border-pink-500/30">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#f472b6"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                 </div>
             </div>
             
             <h3 id="donate-title" class="text-lg font-bold text-white mb-2">Support Research</h3>
-            <p id="donate-desc" class="text-xs text-slate-300 mb-6 leading-relaxed font-mono">
+            <p id="donate-desc" class="text-xs text-slate-300 mb-5 leading-relaxed font-mono">
                 Your support fuels the continuous optimization of algorithms and server maintenance. If this system aids your research, please consider a small donation to help build a better seismic warning ecosystem.
             </p>
             
-            <div class="w-full">
-                <div class="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-1 px-1">
-                    <span>USDT / BTC / ETH</span>
-                    <span class="text-yellow-400">BNB Smart Chain (BEP20)</span>
+            <div class="w-full flex flex-col gap-4">
+                <a href="https://buymeacoffee.com/unclejoe038" target="_blank" class="copy-box group !bg-yellow-500/10 !border-yellow-500/30 hover:!bg-yellow-500/20 hover:!border-yellow-400 text-center py-3 flex items-center justify-center gap-2 no-underline">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="text-yellow-400"><path d="M20,3H4v10c0,2.21,1.79,4,4,4h6c2.21,0,4-1.79,4-4v-3h2c1.1,0,2-0.9,2-2V5C22,3.9,21.1,3,20,3z M20,8h-2V5h2V8z M4,19h16v2H4V19z"/></svg>
+                    <span class="text-yellow-300 font-bold text-sm font-mono group-hover:text-yellow-200 transition">Buy Me a Coffee</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-yellow-500/50 absolute right-3"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
+
+                <div class="flex items-center gap-2 opacity-50">
+                    <div class="h-px bg-slate-700 flex-1"></div>
+                    <span class="text-[9px] text-slate-500 font-mono">OR CRYPTO</span>
+                    <div class="h-px bg-slate-700 flex-1"></div>
                 </div>
-                <div class="copy-box" onclick="copyAddress()">
-                    <div id="copy-tooltip" class="copy-tooltip">COPIED!</div>
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="font-mono text-[11px] text-cyan-300 break-all text-left">0xf7c4806d5ea6d965f8eb3158416bce88f9d261d8</span>
-                        <svg class="text-slate-500 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+
+                <div>
+                    <div class="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-1 px-1">
+                        <span class="text-cyan-300">USDT / ETH / BTC</span>
+                        <span class="text-slate-500">BNB Smart Chain (BEP-20)</span>
                     </div>
-                </div>
-                <div class="text-[9px] text-slate-500 mt-2 text-right">
-                    * Click address to copy
+                    <div class="copy-box" onclick="copyAddress()">
+                        <div id="copy-tooltip" class="copy-tooltip">COPIED!</div>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-mono text-[10px] md:text-[11px] text-slate-300 break-all text-left">0xf7c4806d5ea6d965f8eb3158416bce88f9d261d8</span>
+                            <svg class="text-slate-500 shrink-0 group-hover:text-cyan-400 transition" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </div>
+                    </div>
+                    <div class="text-[9px] text-slate-500 mt-1.5 text-right font-mono">
+                        * Click address to copy
+                    </div>
                 </div>
             </div>
         </div>
@@ -504,86 +525,109 @@
             dzSeries_7days: null,
         };
 
-        const BASELINE_DAYS = 90;
-        const FETCH_DAYS = 110;
+        // [v4.2.5] Updates
+        const BASELINE_DAYS = 130; // 130 days baseline to ensure safety with 150d fetch
+        const FETCH_DAYS = 150;    // Exactly 150 days fetch per user request
+        const FETCH_MIN_MAG = 3.5; 
+
         const DZ_CLAMP_MIN = -3.0;
         const DZ_CLAMP_MAX =  3.0;
         
-        // Donate Address
         const DONATE_ADDR = "0xf7c4806d5ea6d965f8eb3158416bce88f9d261d8";
 
         const colors = {
             mag: d3.scaleLinear().domain([4, 6, 8]).range(['#ffd700', '#ff8c00', '#ff0000']).clamp(true)
         };
 
-        // --- Filter Functions (Optimized v4.2.2) ---
+        // --- Filter Functions ---
         const F_GLOBAL = () => true;
-        const F_TW = q => q.lat > 10 && q.lat < 30 && q.lng > 118 && q.lng < 132;
-        const F_JP = q => q.lat > 25 && q.lat < 55 && q.lng > 120 && q.lng < 160;
         
-        // v4.2.2 Optimized: Merged MMR into Indo-Sunda
+        const F_TW = q => q.lat > 5 && q.lat < 35 && q.lng > 110 && q.lng < 140;
+        const F_JP = q => q.lat > 25 && q.lat < 55 && q.lng > 120 && q.lng < 160;
         const F_INDO_SUNDA = q => {
-            // Original SEA + Myanmar/Andaman extension
-            // Core Indonesia: lat > -15 && lat < 25 && lng > 90 && lng < 145
-            // Myanmar Extension: lat > -10 && lat < 28 && lng > 75 && lng < 100
             const isIndo = q.lat > -15 && q.lat < 25 && q.lng > 90 && q.lng < 145;
             const isMmr = q.lat > -10 && q.lat < 28 && q.lng > 75 && q.lng < 100;
             return isIndo || isMmr;
         };
 
-        const F_NA = q => q.lat > 30 && q.lat < 65 && q.lng > -170 && q.lng < -110;
-        const F_CAM = q => q.lat > 5 && q.lat < 32 && q.lng > -112 && q.lng < -60;
+        // [v4.2.5] Updated NA Filter
+        const F_NA = q => {
+            // NA-Aleutian-Extended: lat (48,74), lng (-180,-130)
+            const isAleutianEx = (q.lat > 48 && q.lat < 74 && q.lng > -180 && q.lng < -130);
+            // NA-WestCoast-Extended: lat (20,60), lng (-150,-105)
+            const isWestCoastEx = (q.lat > 20 && q.lat < 60 && q.lng > -150 && q.lng < -105);
+            return isAleutianEx || isWestCoastEx;
+        };
+
+        // [v4.2.5] Updated CAM Filter
+        const F_CAM = q => (q.lat > 0 && q.lat < 35 && q.lng > -125 && q.lng < -50);
+
         const F_SA = q => q.lat > -60 && q.lat < 15 && q.lng > -85 && q.lng < -60;
         const F_SWPAC = q => (q.lat > -50 && q.lat < -10) && ((q.lng > 160 && q.lng < 180) || (q.lng > -180 && q.lng < -150));
-        
-        // v4.2.2 Optimized: Merged EAR into EU/Med
         const F_EU_AFR = q => {
-            // Original EU: lat > 25 && lat < 50 && lng > 20 && lng < 100
-            // Original EAR: lat > -25 && lat < 20 && lng > 28 && lng < 50
-            const isEu = q.lat > 20 && q.lat < 50 && q.lng > 10 && q.lng < 100; // Expanded slightly west for Italy/Spain
+            const isEu = q.lat > 20 && q.lat < 50 && q.lng > 10 && q.lng < 100; 
             const isAfr = q.lat > -30 && q.lat <= 20 && q.lng > 25 && q.lng < 55;
             return isEu || isAfr;
         };
 
-        // --- CORE ZONES (v4.2.2 Redefined) ---
+        // --- CORE ZONES ---
         const CORE_ZONES = [
             { id: 'global', name: '🌍 全球總覽 (Global)', nameEn: '🌍 Global View', filter: F_GLOBAL, center: { lat: 20, lng: 0, alt: 2.5 } },
-            { id: 'tw_special', name: '🇹🇼 琉球/台灣/菲律賓海溝', nameEn: '🇹🇼 Ryukyu/TW/PH Trench', filter: F_TW, center: { lat: 23.5, lng: 121, alt: 0.6 } },
+            { id: 'tw_special', name: '🇹🇼 琉球/台灣/菲律賓 (擴大區)', nameEn: '🇹🇼 Ryukyu/TW/PH (Expanded)', filter: F_TW, center: { lat: 23.5, lng: 121, alt: 1.0 } },
             { id: 'jp', name: '🇯🇵 日本/千島海溝', nameEn: '🇯🇵 Japan/Kuril Trench', filter: F_JP, center: { lat: 38, lng: 140, alt: 0.8 } },
-            
-            // Merged Zone 1: Indo-Sunda-Andaman
             { id: 'indo_sunda', name: '🇮🇩🇲🇲 印尼-巽他-安達曼弧', nameEn: '🇮🇩🇲🇲 Indo-Sunda-Andaman Arc', filter: F_INDO_SUNDA, center: { lat: 5, lng: 100, alt: 1.1 } },
-            
-            { id: 'na', name: '🇺🇸 北美西岸/阿留申', nameEn: '🇺🇸 N. America/Aleutian', filter: F_NA, center: { lat: 45, lng: -130, alt: 1.0 } },
+            { id: 'na', name: '🇺🇸 北美 (阿留申+本土)', nameEn: '🇺🇸 N. America (Aleutian+Mainland)', filter: F_NA, center: { lat: 40, lng: -110, alt: 1.2 } },
             { id: 'cam', name: '🇲🇽 中美洲—墨西哥—加勒比', nameEn: '🇲🇽 Central America & Caribbean', filter: F_CAM, center: { lat: 18, lng: -86, alt: 1.1 } },
             { id: 'sa', name: '🇨🇱 南美洲 (安地斯)', nameEn: '🇨🇱 South America (Andes)', filter: F_SA, center: { lat: -20, lng: -70, alt: 1.2 } },
             { id: 'swpac', name: '🇳🇿 西南太平洋島弧', nameEn: '🇳🇿 SW Pacific Arc', filter: F_SWPAC, center: { lat: -25, lng: 180, alt: 1.3 } },
-            
-            // Merged Zone 2: Eurasia-Africa
             { id: 'eu_africa_himalaya', name: '🇪🇺🌍 歐亞非-阿爾卑斯-喜馬拉雅帶', nameEn: '🇪🇺🌍 Eurasia-Africa-Himalaya', filter: F_EU_AFR, center: { lat: 20, lng: 45, alt: 1.4 } }
         ];
 
-        // --- COMPOSITE ZONES (Adjusted for v4.2.2) ---
+        // --- COMPOSITE ZONES [v4.2.5 Updated] ---
         const COMPOSITE_ZONES = [
             { id: 'wpac_north', name: 'WPAC-NORTH (琉球台菲+日本千島)', nameEn: 'WPAC-NORTH (Ryukyu/TW/PH+Japan/Kuril)', filter: q => F_TW(q) || F_JP(q), center: { lat: 30, lng: 135, alt: 1.2 } },
-            // Removed 'indo_arc' as it is now essentially the CORE 'indo_sunda' zone.
-            { id: 'epac_north', name: 'EPAC-NORTH (北美+中美加勒比)', nameEn: 'EPAC-NORTH (NA+Caribbean)', filter: q => F_NA(q) || F_CAM(q), center: { lat: 30, lng: -100, alt: 1.5 } },
-            { id: 'americas_sub', name: 'AMERICAS-SUBDUCTION (中美+安地斯)', nameEn: 'AMERICAS-SUBDUCTION (CAM+Andes)', filter: q => F_CAM(q) || F_SA(q), center: { lat: -10, lng: -75, alt: 1.5 } },
-            { id: 'npac_arc', name: 'N-PAC-ARC (日本千島+北美阿留申)', nameEn: 'N-PAC-ARC (Japan/Kuril+Aleutian)', filter: q => F_JP(q) || F_NA(q), center: { lat: 50, lng: 180, alt: 1.5 } },
+            
+            // EPAC-NORTH = NA + CAM (Expanded)
+            { 
+                id: 'epac_north', 
+                name: 'EPAC-NORTH (北美+中美加勒比)', 
+                nameEn: 'EPAC-NORTH (NA+Caribbean)', 
+                filter: q => F_NA(q) || F_CAM(q), 
+                center: { lat: 25, lng: -110, alt: 1.5 } 
+            },
+            
+            // AMERICAS-SUBDUCTION = CAM + SA
+            { 
+                id: 'americas_sub', 
+                name: 'AMERICAS-SUBDUCTION (中美+安地斯)', 
+                nameEn: 'AMERICAS-SUBDUCTION (CAM+Andes)', 
+                filter: q => F_CAM(q) || F_SA(q), 
+                center: { lat: -5, lng: -85, alt: 1.5 } 
+            },
+            
+            // N-PAC-ARC = JP + NA
+            { 
+                id: 'npac_arc', 
+                name: 'N-PAC-ARC (日本千島+北美阿留申)', 
+                nameEn: 'N-PAC-ARC (Japan/Kuril+Aleutian)', 
+                filter: q => F_JP(q) || F_NA(q), 
+                center: { lat: 55, lng: 170, alt: 1.5 } 
+            },
+            
             { id: 'wpac_super', name: 'W-PAC-SUPERARC (印尼+西南太平洋)', nameEn: 'W-PAC-SUPERARC (Indonesia+SW Pacific)', filter: q => F_INDO_SUNDA(q) || F_SWPAC(q), center: { lat: -10, lng: 150, alt: 1.5 } }
         ];
 
         const i18n = {
             zh: {
-                title: '全球強震碎形戰情室 PRO v4.2.2',
-                subtitle: '監控: 5參數 Z-Score + ΔZ Trend Suite & Sync Lock (Sync Guard)',
+                title: '全球強震碎形戰情室 PRO v4.2.5',
+                subtitle: '監控: 3/7日 Z-Score (Lower Thresh) & Sync Lock (Sync Guard)',
                 gps: '當地時間',
                 hud: '偵測到地震事件',
-                status_dl: '下載 USGS 全球地震目錄 (M≥4.0, 110天)...',
-                status_init: '建立 90 天背景分佈模型 (v4.2.2 優化分區)...',
+                status_dl: `下載 USGS 全球地震目錄 (M≥${FETCH_MIN_MAG}, ${FETCH_DAYS}天)...`,
+                status_init: `建立 ${BASELINE_DAYS} 天背景分佈模型 (3/7天窗格)...`,
                 status_ana: '分析區域',
-                rule: '<span class="text-white font-bold">警戒規則:</span> |Z| &gt; 2.0 (前3參)',
-                lv1: '<span class="text-red-400 font-bold">輕度:</span> 任 1 個異常',
+                rule: '<span class="text-white font-bold">警戒規則:</span> |Z| &gt; 1.5 (3Z/7Z共10參)',
+                lv1: '<span class="text-orange-400 font-bold">輕度:</span> 任 1 個異常',
                 lv2: '<span class="text-red-500 font-bold">中度:</span> 任 2 個異常',
                 lv3: '<span class="text-red-600 font-bold">高度:</span> 3 個以上異常',
                 restore: '恢復',
@@ -596,7 +640,7 @@
                 alert3: '高度警戒',
                 chart_title: '7日 Z-Score 趨勢分析',
                 chart_title_dz: 'ΔZ Trend Suite (穩健化)',
-                copyright: '版權所有 © 2025 周裕清',
+                copyright: '版權所有 © 2026 周裕清',
                 note: 'Sync Guard: Dir<0 (Descent) + S>0.3 = LOCK',
                 btn_csv: 'CSV',
                 btn_png: 'PNG',
@@ -607,15 +651,15 @@
                 copy_tooltip: '已複製!'
             },
             en: {
-                title: 'Global Fractal War Room PRO v4.2.2',
-                subtitle: 'Monitor: 5-Param Z-Score + ΔZ Trend Suite & Sync Lock (Sync Guard)',
+                title: 'Global Fractal War Room PRO v4.2.5',
+                subtitle: 'Monitor: 3/7-Day Z-Score (Lower Thresh) & Sync Lock (Sync Guard)',
                 gps: 'Local Time',
                 hud: 'EVENT DETECTED',
-                status_dl: 'Downloading USGS Global Catalog (M≥4.0, 110 days)...',
-                status_init: 'Building 90-day baseline (v4.2.2 Optimized Zones)...',
+                status_dl: `Downloading USGS Global Catalog (M≥${FETCH_MIN_MAG}, ${FETCH_DAYS} days)...`,
+                status_init: `Building ${BASELINE_DAYS}-day baseline (3/7-day windows)...`,
                 status_ana: 'Analyzing',
-                rule: '<span class="text-white font-bold">Rule:</span> |Z| &gt; 2.0 (1st 3 Params)',
-                lv1: '<span class="text-red-400 font-bold">Low:</span> Any 1 anomaly',
+                rule: '<span class="text-white font-bold">Rule:</span> |Z| &gt; 1.5 (3Z/7Z 10 Params)',
+                lv1: '<span class="text-orange-400 font-bold">Low:</span> Any 1 anomaly',
                 lv2: '<span class="text-red-500 font-bold">Mid:</span> Any 2 anomalies',
                 lv3: '<span class="text-red-600 font-bold">High:</span> 3+ anomalies',
                 restore: 'Restore',
@@ -628,7 +672,7 @@
                 alert3: 'High Alert',
                 chart_title: '7-Day Z-Score Trend Analysis',
                 chart_title_dz: 'ΔZ Trend Suite (Robustified)',
-                copyright: 'Copyright © 2025 Yu-Ching Chou',
+                copyright: 'Copyright © 2026 Yu-Ching Chou',
                 note: 'Sync Guard: Dir<0 (Descent) + S>0.3 = LOCK',
                 btn_csv: 'CSV',
                 btn_png: 'PNG',
@@ -666,7 +710,6 @@
             document.querySelector('#tab-core span:last-child').innerText = t('tab_core');
             document.querySelector('#tab-composite span:last-child').innerText = t('tab_comp');
             
-            // Donate Modal Texts
             document.getElementById('donate-title').innerText = t('donate_title');
             document.getElementById('donate-desc').innerText = t('donate_desc');
             document.getElementById('copy-tooltip').innerText = t('copy_tooltip');
@@ -695,9 +738,6 @@
             const container = document.getElementById('zone-list');
             container.innerHTML = '';
             const zones = getActiveZones();
-            // Reset hidden zones when switching tabs? Or keep them separate? 
-            // For simplicity, we clear hidden zones on tab switch or just ignore them.
-            // Let's clear to avoid confusion.
             hiddenZones.clear();
             updateRestoreButton();
 
@@ -759,8 +799,8 @@
         }
 
         // --- 1. ROBUST FRACTAL MATH ---
+        
 const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filter(e=>e>=4);return r.length<3?NaN:Math.log10(Math.E)/(r.reduce((e,r)=>e+r,0)/r.length-4+.05)},calcD0:e=>{if(e.length<5)return NaN;let r=e.map(e=>({x:(e.lng+180)/360,y:(e.lat+90)/180})),t=[50,25,12,6,3].map(e=>{let t=new Set;return r.forEach(r=>t.add(`${Math.floor(r.x*e)},${Math.floor(r.y*e)}`)),{r:1/e,N:t.size}});return FractalMath.regress(t.map(e=>Math.log10(1/e.r)),t.map(e=>Math.log10(e.N)))},calcDt:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.time.getTime()/36e5).sort((e,r)=>e-r),t=Math.min(r.length,200),n=r.slice(-t),a=(n[t-1]-n[0])/5;if(a<=0)return NaN;let l=[],o=[];for(let e=1;e<=8;e++){let c=a*(Math.pow(1.5,e)/25),u=0;for(let e=0;e<t;e++)for(let r=e+1;r<t;r++){if(n[r]-n[e]<c)u++;else break}u>0&&(o.push(Math.log10(c)),l.push(Math.log10(u/(t*(t-1)/2))))}return FractalMath.regress(o,l)},calcH:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.time.getTime()).sort((e,r)=>e-r),t=[];for(let e=1;e<r.length;e++)t.push(r[e]-r[e-1]);if(t.length<3)return NaN;let n=t.reduce((e,r)=>e+r,0)/t.length,a=t.map(e=>e-n),l=[],o=0;a.forEach(e=>{o+=e,l.push(o)});let c=Math.max(...l)-Math.min(...l),u=Math.sqrt(a.reduce((e,r)=>e+r*r,0)/a.length);return 0===u||0===c?.5:Math.max(0,Math.min(1,Math.log10(c/u)/Math.log10(t.length)))},calcMFDFA:e=>{let r=e.length;if(r<8)return NaN;let t=e.map(e=>e.time.getTime()).sort((e,r)=>e-r),n=[];for(let e=1;e<r;e++)n.push(t[e]-t[e-1]);let a=n.reduce((e,r)=>e+r,0)/n.length,l=[0],o=0;for(let e=0;e<n.length;e++)o+=n[e]-a,l.push(o);let c=[4,8,16,32],u=[-2,0,2],s={};if(c.forEach(e=>{if(e>n.length/4)return;let r=Math.floor(n.length/e),t=[];for(let a=0;a<r;a++){let r=a*e,t=l.slice(r,r+e),n=Array.from({length:e},((e,r)=>r)),o=n.reduce((e,r)=>e+r,0),c=t.reduce((e,r)=>e+r,0),u=n.reduce((e,r,n)=>e+r*t[n],0),s=n.reduce((e,r)=>e+r*r,0),f=e,i=(f*u-o*c)/(f*s-o*o),h=(c-i*o)/e,d=0;for(let e=0;e<f;e++)d+=Math.pow(t[e]-(i*e+h),2);t.push(d/e)}u.forEach(r=>{let n=0;if(0===r){let e=t.reduce((e,r)=>e+Math.log(Math.sqrt(r)),0);n=Math.exp(e/r)}else{let e=t.reduce((e,t)=>e+Math.pow(t,r/2),0);n=Math.pow(e/r,1/r)}s[r]||(s[r]={logS:[],logF:[]}),s[r].logS.push(Math.log10(e)),s[r].logF.push(Math.log10(n))})}),!s[2]||s[2].logS.length<2)return NaN;let f=[],i=[];if(u.forEach(e=>{let r=FractalMath.regress(s[e].logS,s[e].logF);f.push(e*r-1),i.push(e)}),0===i.length)return NaN;let h=[];for(let e=0;e<i.length-1;e++)h.push((f[e+1]-f[e])/(i[e+1]-i[e]));if(0===h.length)return NaN;let d=Math.max(...h)-Math.min(...h);return d<0?0:d},regress:(e,r)=>{let t=e.length;if(t<2)return 0;let n=e.reduce((e,r)=>e+r,0),a=r.reduce((e,r)=>e+r,0),l=e.reduce((e,t,n)=>e+t*r[n],0),o=e.reduce((e,r)=>e+r*r,0);return 0===t*o-n*n?0:(t*l-n*a)/(t*o-n*n)}};
-
         
 
         // --- 2. Z-Score STATS ENGINE ---
@@ -768,7 +808,14 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
             calculateDistribution: async (allZoneQuakes, windowDays, stepDays = 3) => {
                 const now = new Date();
                 const samples = { b:[], d0:[], dt:[], h:[], da:[] };
+                
+                // Anti-freeze protection for large datasets
+                let loopCount = 0;
+                
                 for (let i = windowDays * 2; i < BASELINE_DAYS; i += stepDays) {
+                    // Yield to main thread every 10 iterations to prevent UI freeze
+                    if (++loopCount % 10 === 0) await new Promise(r => setTimeout(r, 0));
+
                     const end = new Date(now);
                     end.setDate(now.getDate() - i);
                     const start = new Date(end);
@@ -838,7 +885,7 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
             }
         };
 
-        // --- 3. SYNC GUARD LOGIC (v4.2 New Feature) ---
+        // --- 3. SYNC GUARD LOGIC ---
         function sgnEps(x, eps){ 
             if (Math.abs(x) < eps) return 0; 
             return x > 0 ? 1 : -1; 
@@ -870,19 +917,22 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
             const d3 = d3Series[last].v;
             const d1 = d1Series[last].v;
 
+            // 5-Param Sync Vector Check
             const Ss  = syncScore(s,  epsSlope);
             const S7  = syncScore(d7, epsDz);
             const S3  = syncScore(d3, epsDz);
             const S1  = syncScore(d1, epsDz);
 
-            const w = {s:0.45, d7:0.30, d3:0.15, d1:0.10};
-            const S = w.s*Ss.S + w.d7*S7.S + w.d3*S3.S + w.d1*S1.S;
-            const dir = Math.sign(w.s*Ss.dir + w.d7*S7.dir + w.d3*S3.dir + w.d1*S1.dir);
+            // Weights
+            const w = {s:0.35, d7:0.25, d3:0.20, d1:0.10, h:0.10};
+            
+            const S = w.s*Ss.S + w.d7*S7.S + w.d3*S3.S + (w.d1+w.h)*S1.S;
+            const dir = Math.sign(w.s*Ss.dir + w.d7*S7.dir + w.d3*S3.dir + (w.d1+w.h)*S1.dir);
 
-            const gated = triggerCount >= 1; // Must have at least one Z-score alert to activate Guard
+            const gated = triggerCount >= 1; 
             const T = 0.30;
-            const lock = gated && (dir < 0) && (S > T); // Pre-quake Sync Lock (Descent)
-            const release = gated && (dir > 0) && (S > T); // Post-quake Sync Release (Ascent)
+            const lock = gated && (dir < 0) && (S > T);
+            const release = gated && (dir > 0) && (S > T); 
 
             return {S, dir, lock, release};
         }
@@ -899,7 +949,8 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
 
             try {
                 status.innerText = t('status_dl');
-                const res = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${past.toISOString()}&minmagnitude=4.0&orderby=time`);
+                
+                const res = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${past.toISOString()}&minmagnitude=${FETCH_MIN_MAG}&orderby=time`);
                 const data = await res.json();
                 
                 allQuakes = data.features.map(f => ({
@@ -912,13 +963,13 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
                     time: new Date(f.properties.time) 
                 }));
 
-                globalStatus.innerText = `ONLINE (${allQuakes.length} events)`;
+                // [v4.2.5] Updated Global Status Text
+                globalStatus.innerText = `ONLINE (Fetched ${FETCH_DAYS}d: ${allQuakes.length} events)`;
                 globalStatus.classList.replace('text-slate-300', 'text-green-400');
                 world.pointsData(allQuakes);
 
                 status.innerText = t('status_init');
                 
-                // Initial Render with Default Tab
                 await renderCurrentTab();
 
                 setTimeout(() => {
@@ -938,37 +989,43 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
         async function processZone(zone, quakes) {
             const container = document.getElementById('zone-list');
             
-            const b90 = FractalMath.calcB(quakes) || 0;
-            const dt90 = FractalMath.calcDt(quakes) || 0;
-            const da90 = FractalMath.calcMFDFA(quakes) || 0;
-            const d090 = FractalMath.calcD0(quakes) || 0;
-            const h90 = FractalMath.calcH(quakes) || 0;
+            // Background
+            const bBase = FractalMath.calcB(quakes) || 0;
+            const dtBase = FractalMath.calcDt(quakes) || 0;
+            const daBase = FractalMath.calcMFDFA(quakes) || 0;
+            const d0Base = FractalMath.calcD0(quakes) || 0;
+            const hBase = FractalMath.calcH(quakes) || 0;
 
+            // Stats for 7 days (Base) and 3 days (High Sens)
             const stats7 = await StatsEngine.calculateDistribution(quakes, 7, 3);
-            const stats14 = await StatsEngine.calculateDistribution(quakes, 14, 3);
+            const stats3 = await StatsEngine.calculateDistribution(quakes, 3, 3);
             
             const now = new Date();
             const past7 = new Date(); past7.setDate(now.getDate() - 7);
-            const past14 = new Date(); past14.setDate(now.getDate() - 14);
+            const past3 = new Date(); past3.setDate(now.getDate() - 3);
 
             const quakes7 = quakes.filter(q => q.time >= past7);
-            const quakes14 = quakes.filter(q => q.time >= past14);
+            const quakes3 = quakes.filter(q => q.time >= past3);
             
+            // Raw Fractal Values
             const p7 = { b: FractalMath.calcB(quakes7), dt: FractalMath.calcDt(quakes7), da: FractalMath.calcMFDFA(quakes7), d0: FractalMath.calcD0(quakes7), h: FractalMath.calcH(quakes7) };
-            const p14 = { b: FractalMath.calcB(quakes14), dt: FractalMath.calcDt(quakes14), da: FractalMath.calcMFDFA(quakes14), d0: FractalMath.calcD0(quakes14), h: FractalMath.calcH(quakes14) };
+            const p3 = { b: FractalMath.calcB(quakes3), dt: FractalMath.calcDt(quakes3), da: FractalMath.calcMFDFA(quakes3), d0: FractalMath.calcD0(quakes3), h: FractalMath.calcH(quakes3) };
 
+            // Z-Scores
             const z7 = {
                 b: StatsEngine.getZScore(p7.b, stats7.b), dt: StatsEngine.getZScore(p7.dt, stats7.dt), da: StatsEngine.getZScore(p7.da, stats7.da),
                 d0: StatsEngine.getZScore(p7.d0, stats7.d0), h: StatsEngine.getZScore(p7.h, stats7.h)
             };
-            const z14 = {
-                b: StatsEngine.getZScore(p14.b, stats14.b), dt: StatsEngine.getZScore(p14.dt, stats14.dt), da: StatsEngine.getZScore(p14.da, stats14.da),
-                d0: StatsEngine.getZScore(p14.d0, stats14.d0), h: StatsEngine.getZScore(p14.h, stats14.h)
+            const z3 = {
+                b: StatsEngine.getZScore(p3.b, stats3.b), dt: StatsEngine.getZScore(p3.dt, stats3.dt), da: StatsEngine.getZScore(p3.da, stats3.da),
+                d0: StatsEngine.getZScore(p3.d0, stats3.d0), h: StatsEngine.getZScore(p3.h, stats3.h)
             };
 
+            // Keep Z-Series for Trend/Delta Calculation (still uses 14d lookback for trend context)
             const zSeries14 = await StatsEngine.calculateZSeries(quakes, stats7, 14);
             const zSeries7 = zSeries14.slice(7); 
             
+            // Simple dZ for display (Last 7 days change)
             const dz7Mini = {
                 b:  (zSeries14[13].z.b  - zSeries14[6].z.b),
                 dt: (zSeries14[13].z.dt - zSeries14[6].z.dt),
@@ -977,18 +1034,17 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
                 h:  (zSeries14[13].z.h  - zSeries14[6].z.h)
             };
 
-            const activeParams = ['b', 'Dt', 'Δα'];
+            // Alert Logic: Uses z3 (3-day) and z7 (7-day)
+            const activeParams = ['b', 'Dt', 'Δα', 'D₀', 'H'];
             const zItems = [
-                { name: 'b', val: z7.b }, { name: 'Dt', val: z7.dt }, { name: 'Δα', val: z7.da }, { name: 'D₀', val: z7.d0 }, { name: 'H', val: z7.h },
-                { name: 'b', val: z14.b }, { name: 'Dt', val: z14.dt }, { name: 'Δα', val: z14.da }, { name: 'D₀', val: z14.d0 }, { name: 'H', val: z14.h }
+                { name: 'b', val: z3.b }, { name: 'Dt', val: z3.dt }, { name: 'Δα', val: z3.da }, { name: 'D₀', val: z3.d0 }, { name: 'H', val: z3.h },
+                { name: 'b', val: z7.b }, { name: 'Dt', val: z7.dt }, { name: 'Δα', val: z7.da }, { name: 'D₀', val: z7.d0 }, { name: 'H', val: z7.h }
             ];
             
-            // Standard Alert: Keep |Z|>2.0 for Global Scale to avoid noise
-            const triggers = zItems.filter(item => activeParams.includes(item.name) && Math.abs(item.val) > 2.0);
+            const triggers = zItems.filter(item => activeParams.includes(item.name) && Math.abs(item.val) > 1.5);
             const count = triggers.length;
             const triggerNames = [...new Set(triggers.map(t => t.name))]; 
 
-            // Sync Guard Calculation
             const syncResult = computeSyncGuard(zSeries14, count);
 
             let alertClass = "border-l-slate-600";
@@ -1004,12 +1060,11 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
                 alertNoteClass = "text-red-200 border-red-800/70 bg-red-900/25";
                 alertNoteText = `${t('alert2')}: ${triggerNames.join(", ")} (${count})`;
             } else if (count >= 1) {
-                alertClass = "alert-1 border-l-red-400";
-                alertNoteClass = "text-red-300 border-red-900/60 bg-red-900/15";
+                alertClass = "alert-1 border-l-orange-400"; 
+                alertNoteClass = "text-orange-300 border-orange-900/60 bg-orange-900/15";
                 alertNoteText = `${t('alert1')}: ${triggerNames.join(", ")} (${count})`;
             }
 
-            // Sync Lock Visual Override
             if (syncResult.lock) alertClass += " sync-lock-border";
 
             const dzB  = formatDz(dz7Mini.b);
@@ -1018,7 +1073,7 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
             const dzD0 = formatDz(dz7Mini.d0);
             const dzH  = formatDz(dz7Mini.h);
 
-            // Create Card HTML (v4.2 Layout)
+            // Create Card HTML
             const div = document.createElement('div');
             div.className = `zone-card rounded-lg border-l-4 ${alertClass} mb-2`;
             div.id = `card-${zone.id}`;
@@ -1037,6 +1092,7 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
                 syncGuardHTML = `<div class="sync-box sync-release-alert"><span>${relText}</span><span>↗</span></div>`;
             }
 
+            // Updated Grid Headers: 3Z / 7Z
             div.innerHTML = `
                 <button class="close-btn" onclick="removeCard(this, event, '${zone.id}')">×</button>
                 <div class="flex flex-col mb-1">
@@ -1046,7 +1102,7 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
                     </div>
                     
                     <div class="flex items-center gap-2 pl-4">
-                         <div class="text-[9px] text-slate-400 font-mono">Count: ${quakes.length} (7d:${quakes7.length})</div>
+                         <div class="text-[9px] text-slate-400 font-mono">Count: ${quakes.length} (3d:${quakes3.length})</div>
                          <button class="btn-ztrend text-[9px] bg-slate-700 hover:bg-slate-600 text-cyan-300 px-1.5 py-0.5 rounded border border-slate-600 transition flex items-center gap-1 ml-auto">
                             ${t('trend')}
                          </button>
@@ -1056,17 +1112,17 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
                     </div>
                 </div>
 
-                ${quakes14.length < 3 ? `<div class="text-xs text-slate-500 text-center py-2">Insufficient Data (<3)</div>` : `
+                ${quakes7.length < 3 ? `<div class="text-xs text-slate-500 text-center py-2">Insufficient Data (<3)</div>` : `
                 <div class="p-1 rounded bg-slate-900/40 border border-slate-800">
                     <div class="param-grid mb-1 opacity-70">
-                        <span class="col-head"></span><span class="col-head text-center">BG</span><span class="col-head text-center">7Z</span><span class="col-head text-center">14Z</span><span class="col-head text-center">ΔZ7</span>
+                        <span class="col-head"></span><span class="col-head text-center">BG</span><span class="col-head text-center">3Z</span><span class="col-head text-center">7Z</span><span class="col-head text-center">dZ</span>
                     </div>
                     <div class="param-grid">
-                        <div class="param-row"><span class="text-cyan-400 font-bold p-label-text text-center">b</span><span class="text-center text-slate-400 p-val-text">${safeFormat(b90)}</span><div class="text-center">${renderZ(z7.b)}</div><div class="text-center">${renderZ(z14.b)}</div><span class="text-center dz-val ${dzB.cls}">${dzB.txt}</span></div>
-                        <div class="param-row"><span class="text-yellow-400 font-bold p-label-text text-center">Dt</span><span class="text-center text-slate-400 p-val-text">${safeFormat(dt90)}</span><div class="text-center">${renderZ(z7.dt)}</div><div class="text-center">${renderZ(z14.dt)}</div><span class="text-center dz-val ${dzDt.cls}">${dzDt.txt}</span></div>
-                        <div class="param-row"><span class="text-fuchsia-400 font-bold p-label-text text-center">Δα</span><span class="text-center text-slate-400 p-val-text">${safeFormat(da90)}</span><div class="text-center">${renderZ(z7.da)}</div><div class="text-center">${renderZ(z14.da)}</div><span class="text-center dz-val ${dzDa.cls}">${dzDa.txt}</span></div>
-                        <div class="param-row opacity-60"><span class="text-purple-300 p-label-text text-center">D₀</span><span class="text-center text-slate-500 p-val-text">${safeFormat(d090)}</span><div class="text-center">${renderZ(z7.d0)}</div><div class="text-center">${renderZ(z14.d0)}</div><span class="text-center dz-val ${dzD0.cls}">${dzD0.txt}</span></div>
-                        <div class="param-row opacity-60"><span class="text-pink-300 p-label-text text-center">H</span><span class="text-center text-slate-500 p-val-text">${safeFormat(h90)}</span><div class="text-center">${renderZ(z7.h)}</div><div class="text-center">${renderZ(z14.h)}</div><span class="text-center dz-val ${dzH.cls}">${dzH.txt}</span></div>
+                        <div class="param-row"><span class="text-cyan-400 font-bold p-label-text text-center">b</span><span class="text-center text-slate-400 p-val-text">${safeFormat(bBase)}</span><div class="text-center">${renderZ(z3.b)}</div><div class="text-center">${renderZ(z7.b)}</div><span class="text-center dz-val ${dzB.cls}">${dzB.txt}</span></div>
+                        <div class="param-row"><span class="text-yellow-400 font-bold p-label-text text-center">Dt</span><span class="text-center text-slate-400 p-val-text">${safeFormat(dtBase)}</span><div class="text-center">${renderZ(z3.dt)}</div><div class="text-center">${renderZ(z7.dt)}</div><span class="text-center dz-val ${dzDt.cls}">${dzDt.txt}</span></div>
+                        <div class="param-row"><span class="text-fuchsia-400 font-bold p-label-text text-center">Δα</span><span class="text-center text-slate-400 p-val-text">${safeFormat(daBase)}</span><div class="text-center">${renderZ(z3.da)}</div><div class="text-center">${renderZ(z7.da)}</div><span class="text-center dz-val ${dzDa.cls}">${dzDa.txt}</span></div>
+                        <div class="param-row"><span class="text-purple-300 p-label-text text-center font-bold">D₀</span><span class="text-center text-slate-400 p-val-text">${safeFormat(d0Base)}</span><div class="text-center">${renderZ(z3.d0)}</div><div class="text-center">${renderZ(z7.d0)}</div><span class="text-center dz-val ${dzD0.cls}">${dzD0.txt}</span></div>
+                        <div class="param-row"><span class="text-pink-300 p-label-text text-center font-bold">H</span><span class="text-center text-slate-400 p-val-text">${safeFormat(hBase)}</span><div class="text-center">${renderZ(z3.h)}</div><div class="text-center">${renderZ(z7.h)}</div><span class="text-center dz-val ${dzH.cls}">${dzH.txt}</span></div>
                     </div>
                     
                     <div class="mt-1 text-[9px] leading-tight font-mono border rounded px-1 py-0.5 text-center ${alertNoteClass}">${alertNoteText}</div>
@@ -1091,8 +1147,7 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
             if (val === null || isNaN(val)) return `<span class="z-badge z-na">N/A</span>`;
             const v = val.toFixed(1);
             let cls = 'z-normal';
-            // Using 2.0 to match Global's stricter rule, but visual warn low/high still applies
-            if (Math.abs(val) > 2.0) cls = val > 0 ? 'z-warn-high' : 'z-warn-low';
+            if (Math.abs(val) > 1.5) cls = val > 0 ? 'z-warn-high' : 'z-warn-low';
             return `<span class="z-badge ${cls}">${val>0?'+':''}${v}</span>`;
         };
 
@@ -1261,7 +1316,6 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
 
         function closeChartModal() { document.getElementById("chart-modal").classList.add("hidden"); }
 
-        // --- Donate Modal Logic ---
         function openDonateModal() {
             document.getElementById("donate-modal").classList.remove("hidden");
         }
@@ -1271,16 +1325,37 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
         }
         
         function copyAddress() {
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(DONATE_ADDR).then(() => {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(DONATE_ADDR)
+                  .then(() => {
                     showCopyTooltip();
-                }).catch(err => {
-                    console.error('Async: Could not copy text: ', err);
-                    prompt("Copy Address:", DONATE_ADDR);
-                });
+                  })
+                  .catch((err) => {
+                    fallbackCopyText(DONATE_ADDR);
+                  });
             } else {
-                prompt("Copy Address:", DONATE_ADDR);
+                fallbackCopyText(DONATE_ADDR);
             }
+        }
+
+        function fallbackCopyText(text) {
+          const textArea = document.createElement("textarea");
+          textArea.value = text;
+          textArea.style.top = "0";
+          textArea.style.left = "0";
+          textArea.style.position = "fixed";
+          textArea.style.opacity = "0";
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          try {
+            const successful = document.execCommand('copy');
+            if (successful) showCopyTooltip();
+            else prompt("Copy Address:", text);
+          } catch (err) {
+            prompt("Copy Address:", text);
+          }
+          document.body.removeChild(textArea);
         }
         
         function showCopyTooltip() {
@@ -1291,7 +1366,6 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
             }, 2000);
         }
 
-        // --- Draggable Logic for Chart Modal ---
         (function initDraggable() {
             const dragHandle = document.getElementById("chart-drag-handle");
             const modalContent = document.getElementById("chart-modal-content");
@@ -1442,7 +1516,6 @@ const FractalMath={calcB:e=>{if(e.length<5)return NaN;let r=e.map(e=>e.mag).filt
             hiddenZones.clear();
             updateRestoreButton();
             document.getElementById('zone-list').innerHTML = '';
-            // Reset to default tab if needed, or just refresh current
             fetchData(); 
         }
 
